@@ -16,7 +16,7 @@ def test_engine():
         # We might not have a valid key in this environment, but we can check if it tries to call it
         # If it fails with Auth error, that means it successfully called the API with the params.
         # If it fails with "TypeError", our code is wrong.
-        response = llm.generate_response("Hello", temperature=0.5, model_name="gemini-1.5-flash")
+        response = llm.generate_response("Hello", temperature=0.5, model_name="gemini-2.5-flash")
         print(f"Response: {response}")
     except Exception as e:
         print(f"Caught expected exception (likely auth or network if key missing): {e}")

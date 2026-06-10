@@ -7,6 +7,9 @@ ALIAS is a powerful, voice-activated AI assistant designed to control your Windo
 *   **Voice Control**: Hands-free interaction using efficient Speech-to-Text (STT) and high-quality Text-to-Speech (TTS).
 *   **Desktop App**: Runs as a standalone application using Electron.
 *   **Multi-Model Intelligence**: Seamlessly switch between Gemini 2.0, OpenAI GPT-4o, DeepSeek R1, Groq Llama 3.3, and Qubrid GPT-OSS.
+*   **Persistent Chat History**: Conversations are automatically saved to a local SQLite database. View, continue, rename, delete, or search past chats from a ChatGPT-style sidebar history panel.
+*   **Intelligent Long-Term Memory**: ALIAS automatically extracts and remembers important facts about you (e.g., name, education, skills, preferences, projects) across conversations. It injects relevant facts and past chat logs as context for future prompts.
+*   **Memory Management Dashboard**: Complete control over what ALIAS remembers. View and delete learned facts directly from the **Memory** tab under Settings.
 *   **Context Awareness**: Can "see" what window you are focusing on (e.g., VS Code, Browser) to provide relevant answers.
 *   **System Control**: Open applications, control media playback (Play/Pause/Next), and manage files.
 *   **Strict Coding Mode**: Technical output is formatted in clean Console-style blocks with syntax highlighting and NO markdown asterisks (`*`) for cleaner readability.
@@ -15,8 +18,8 @@ ALIAS is a powerful, voice-activated AI assistant designed to control your Windo
 ## 🛠️ Tech Stack
 
 *   **Frontend**: React, Vite, Electron, TailwindCSS, Socket.IO Client.
-*   **Backend**: Python, FastAPI, Socket.IO Server, PyAudio, Edge-TTS.
-*   **AI Models**: Google Gemini, OpenAI, Groq, DeepSeek, Qubrid.
+*   **Backend**: Python, FastAPI, Socket.IO Server, SQLite, PyAudio, Edge-TTS.
+*   **AI Models**: Google Gemini (powering core intelligence & memory extraction), OpenAI, Groq, DeepSeek, Qubrid.
 
 ## 📦 Installation
 
@@ -67,6 +70,11 @@ Simply run the `run_alias.bat` file in the root directory.
 *   It launches the Electron desktop interface.
 *   It handles cleanup of old processes.
 
+### Voice/Text Commands for Memory
+*   **"Remember that my favorite programming language is Python."** - Learns and saves the fact.
+*   **"What do you remember about me?"** - ALIAS returns the relevant facts it has stored.
+*   **"Forget my college details."** - Deletes the matching fact from memory.
+
 ### Voice Commands
 *   **"Hello"**: Triggers custom greeting ("Hey Shravan...").
 *   **"Open [App Name]"**: Opens applications (e.g., "Open Calculator").
@@ -80,9 +88,11 @@ Simply run the `run_alias.bat` file in the root directory.
 *   **Theme**: System-aware Light/Dark mode.
 
 ## 📝 Recent Updates
+*   **Persistent Chat History Sidebar**: Restructured navigation panel supporting recent chats with inline renaming and deletion.
+*   **Intelligent Memory Extraction**: Dynamic background processing pipeline powered by Gemini that detects facts and manages database records.
+*   **Memory Management Tab**: User dashboard added inside settings to display and prune learned memories.
 *   **Desktop Mode**: Switched from Browser to Electron.
 *   **UI Polish**: Red accent slider, Console-style code blocks.
-*   **Formatting Rules**: Enforced "No Asterisk" policy for cleaner tech output.
 *   **Stop Button**: Immediate TTS interruption.
 
 ---

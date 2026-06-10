@@ -1,8 +1,8 @@
-import { X, Save, Mic, Monitor } from 'lucide-react'
+import { X, Save, Mic, Monitor, Brain, Trash2 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 
-export default function SettingsModal({ isOpen, onClose, theme, setTheme, voice, setVoice }) {
+export default function SettingsModal({ isOpen, onClose, theme, setTheme, voice, setVoice, memories = [], onDeleteMemory }) {
     if (!isOpen) return null
 
     const [activeTab, setActiveTab] = useState('general')
@@ -43,6 +43,13 @@ export default function SettingsModal({ isOpen, onClose, theme, setTheme, voice,
                                 >
                                     <Mic className="w-4 h-4" />
                                     <span className="text-sm font-medium">Voice</span>
+                                </button>
+                                <button
+                                    onClick={() => setActiveTab('memory')}
+                                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${activeTab === 'memory' ? 'bg-gray-200 dark:bg-[#2f2f2f] text-gray-900 dark:text-white' : 'text-gray-500 dark:text-white/50 hover:bg-gray-100 dark:hover:bg-[#2f2f2f]/50 hover:text-gray-900 dark:hover:text-white'}`}
+                                >
+                                    <Brain className="w-4 h-4" />
+                                    <span className="text-sm font-medium">Memory</span>
                                 </button>
                             </div>
 
@@ -90,6 +97,35 @@ export default function SettingsModal({ isOpen, onClose, theme, setTheme, voice,
                                             </select>
                                             <p className="text-xs text-gray-500 dark:text-white/30">Currently using Edge TTS (Online Neural Voice)</p>
                                         </div>
+                                    </div>
+                                )}
+
+                                {activeTab === 'memory' && (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <h3 className="text-sm font-medium text-gray-700 dark:text-white/70 mb-1">Stored Memories</h3>
+                                            <p className="text-xs text-gray-500 dark:text-white/40">These are facts ALIAS has learned about you. You can delete facts you want ALIAS to forget.</p>
+                                        </div>
+                                        {memories.length === 0 ? (
+                                            <div className="text-center py-8 text-sm text-gray-400 dark:text-white/30">
+                                                No memories stored yet. Converse with ALIAS to share information.
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                                                {memories.map((mem) => (
+                                                    <div key={mem.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-[#2f2f2f] border border-gray-100 dark:border-white/5 rounded-xl group hover:border-gray-300 dark:hover:border-white/15 transition-all">
+                                                        <span className="text-sm text-gray-800 dark:text-white/90 font-light pr-4">{mem.fact}</span>
+                                                        <button
+                                                            onClick={() => onDeleteMemory(mem.id)}
+                                                            className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20 rounded-lg transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100"
+                                                            title="Forget this fact"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
                             </div>

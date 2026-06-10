@@ -13,3 +13,11 @@ venv/
 # OS
 .DS_Store
 Thumbs.db
+
+# Databases & local uploads
+backend/users.db
+backend/uploads/
+
+# IDE settings
+.vscode/
+backend/.vscode/

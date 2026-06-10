@@ -2,9 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import io from 'socket.io-client'
 import {
   Plus, MessageSquare, ChevronDown, Square,
-  Paperclip, Mic, ArrowUp, Menu, X, Settings, Terminal, Thermometer, Cpu, Check, Copy
+  Paperclip, Mic, ArrowUp, Menu, X, Settings, Terminal, Thermometer, Cpu, Check, Copy, User, Image, Search, Trash2, Edit2
 } from 'lucide-react'
+import Auth from './components/Auth'
 import SettingsModal from './components/SettingsModal'
+import ImageModal from './components/ImageModal'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
@@ -22,16 +24,26 @@ function App() {
   const [input, setInput] = useState('')
   const [temperature, setTemperature] = useState(0.7)
   const [availableModels, setAvailableModels] = useState([])
-  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash-preview-09-2025')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.5-flash')
   const [isListening, setIsListening] = useState(false)
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [theme, setTheme] = useState('system') // 'light', 'dark', 'system'
   const [voice, setVoice] = useState('male') // 'male', 'female'
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [user, setUser] = useState(null)
+
+  // Chat History & Memories State
+  const [conversations, setConversations] = useState([])
+  const [currentConversationId, setCurrentConversationId] = useState(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [memories, setMemories] = useState([])
+  const [editingId, setEditingId] = useState(null)
+  const [editingTitle, setEditingTitle] = useState('')
+
   const messagesEndRef = useRef(null)
   const fileInputRef = useRef(null)
-
-  // ... (previous useEffects)
 
   useEffect(() => {
     socket.on('response', (data) => {
@@ -56,6 +68,44 @@ function App() {
       }
     })
 
+    socket.on('conversations_list', (data) => {
+      setConversations(data.conversations || [])
+    })
+
+    socket.on('conversation_history', (data) => {
+      const history = data.messages || []
+      setMessages(history.map(m => ({
+        role: m.role,
+        text: m.content
+      })))
+    })
+
+    socket.on('conversation_started', (data) => {
+      setCurrentConversationId(data.conversation_id)
+      if (user?.email) {
+        socket.emit('get_conversations', { email: user.email })
+      }
+    })
+
+    socket.on('conversation_renamed', (data) => {
+      setConversations(prev => prev.map(c => c.id === data.conversation_id ? { ...c, title: data.title } : c))
+    })
+
+    socket.on('conversation_deleted', (data) => {
+      setConversations(prev => prev.filter(c => c.id !== data.conversation_id))
+      setCurrentConversationId(prev => {
+        if (prev === data.conversation_id) {
+          setMessages([])
+          return null
+        }
+        return prev
+      })
+    })
+
+    socket.on('memories_list', (data) => {
+      setMemories(data.memories || [])
+    })
+
     // Explicitly request models in case we missed the connect event
     socket.emit('get_models')
 
@@ -64,8 +114,29 @@ function App() {
       socket.off('status')
       socket.off('recognized_text')
       socket.off('available_models')
+      socket.off('conversations_list')
+      socket.off('conversation_history')
+      socket.off('conversation_started')
+      socket.off('conversation_renamed')
+      socket.off('conversation_deleted')
+      socket.off('memories_list')
     }
-  }, [selectedModel])
+  }, [selectedModel, user])
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem('alias_user')
+    if (savedUser) {
+      setUser(JSON.parse(savedUser))
+      setIsAuthenticated(true)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (isAuthenticated && user?.email) {
+      socket.emit('get_conversations', { email: user.email })
+      socket.emit('get_memories', { email: user.email })
+    }
+  }, [isAuthenticated, user])
 
   // ... (rest of the file)
 
@@ -132,14 +203,67 @@ function App() {
     socket.emit('process_text', {
       text: input,
       temperature: parseFloat(temperature),
-      model: selectedModel
+      model: selectedModel,
+      username: user ? user.name : 'Guest',
+      email: user ? user.email : 'guest@alias.com',
+      conversation_id: currentConversationId
     })
     setInput('')
+  }
+
+  const handleImageGenerate = ({ prompt, width, height, model }) => {
+    const commandText = `generate image of ${prompt} ${width}x${height} using ${model}`
+    addMessage('user', `Generate image: "${prompt}" (${width}x${height}, model: ${model})`)
+    socket.emit('process_text', {
+      text: commandText,
+      temperature: parseFloat(temperature),
+      model: selectedModel,
+      username: user ? user.name : 'Guest',
+      email: user ? user.email : 'guest@alias.com',
+      conversation_id: currentConversationId
+    })
   }
 
   const startNewChat = () => {
     setMessages([])
     setInput('')
+    setCurrentConversationId(null)
+  }
+
+  const selectConversation = (id) => {
+    setCurrentConversationId(id)
+    socket.emit('get_conversation', { conversation_id: id })
+  }
+
+  const handleRenameConversation = (id, newTitle) => {
+    socket.emit('rename_conversation', { conversation_id: id, title: newTitle })
+  }
+
+  const handleDeleteConversation = (id, e) => {
+    e.stopPropagation()
+    socket.emit('delete_conversation', { conversation_id: id })
+  }
+
+  const handleDeleteMemory = (memoryId) => {
+    if (user?.email) {
+      socket.emit('delete_memory', { email: user.email, memory_id: memoryId })
+    }
+  }
+
+  const startEditing = (id, title) => {
+    setEditingId(id)
+    setEditingTitle(title)
+  }
+
+  const saveTitle = (id) => {
+    if (editingTitle.trim()) {
+      handleRenameConversation(id, editingTitle.trim())
+    }
+    setEditingId(null)
+  }
+
+  const cancelEditing = () => {
+    setEditingId(null)
   }
 
   const toggleVoice = () => {
@@ -192,11 +316,19 @@ function App() {
     )
   }
 
+  if (!isAuthenticated) {
+    return <Auth onLoginSuccess={(userData) => {
+      setIsAuthenticated(true);
+      setUser(userData);
+      localStorage.setItem('alias_user', JSON.stringify(userData));
+    }} />
+  }
+
   return (
     <div className="flex h-screen bg-white dark:bg-[#212121] text-gray-900 dark:text-[#ececec] font-sans overflow-hidden transition-colors duration-200">
 
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'w-[260px]' : 'w-0'} bg-gray-50 dark:bg-[#171717] flex flex-col transition-all duration-300 overflow-hidden shrink-0 border-r border-gray-200 dark:border-white/5`}>
+      <div className={`${isSidebarOpen ? 'w-[260px]' : 'w-0'} bg-gray-50 dark:bg-[#171717] flex flex-col transition-all duration-300 overflow-hidden shrink-0 border-r border-gray-200 dark:border-white/5 h-full`}>
         <div className="p-3 flex items-center justify-between group">
           <button onClick={startNewChat} className="flex-1 flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors text-sm font-medium">
             <div className="h-6 w-6 rounded-full flex items-center justify-center overflow-hidden">
@@ -209,40 +341,16 @@ function App() {
           </button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-6">
-          <button onClick={startNewChat} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors bg-gray-200 dark:bg-[#212121] text-gray-900 dark:text-white">
-            <MessageSquare size={18} />
+        <div className="px-3 py-2 space-y-4 shrink-0">
+          <button onClick={startNewChat} className="w-full flex items-center justify-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors bg-gray-200 dark:bg-[#212121] text-gray-900 dark:text-white hover:opacity-90">
+            <Plus size={18} />
             <span>New chat</span>
           </button>
 
-          {/* Temperature Controls */}
-          <div className="space-y-3 px-1">
-            <div className="flex items-center justify-between text-xs text-gray-500 dark:text-white/50 px-1">
-              <div className="flex items-center gap-2">
-                <Thermometer size={14} />
-                <span>Creativity</span>
-              </div>
-              <span>{temperature}</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.1"
-              value={temperature}
-              onChange={(e) => setTemperature(e.target.value)}
-              className="w-full h-1 bg-gray-300 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-600 dark:accent-red-500"
-            />
-            <div className="flex justify-between text-[10px] text-gray-400 dark:text-white/30 px-1">
-              <span>Precise</span>
-              <span>Creative</span>
-            </div>
-          </div>
-
           {/* Model Selection */}
-          <div className="space-y-3 px-1">
-            <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-white/50 px-1">
-              <Cpu size={14} />
+          <div className="space-y-1.5 px-1">
+            <div className="flex items-center gap-2 text-[10px] font-semibold text-gray-400 dark:text-white/30 uppercase tracking-wider px-1">
+              <Cpu size={12} />
               <span>Intelligence</span>
             </div>
             <div className="relative">
@@ -250,7 +358,7 @@ function App() {
                 value={selectedModel}
                 onChange={(e) => setSelectedModel(e.target.value)}
                 disabled={availableModels.length === 0}
-                className="w-full bg-gray-200 dark:bg-[#2f2f2f] text-gray-900 dark:text-white text-xs rounded-md px-3 py-2 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-black/5 dark:focus:ring-white/10"
+                className="w-full bg-gray-100 dark:bg-[#2f2f2f] text-gray-900 dark:text-white text-xs rounded-md px-3 py-2 appearance-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-black/5 dark:focus:ring-white/10"
               >
                 {availableModels.length > 0 ? (
                   availableModels.map(model => (
@@ -265,13 +373,135 @@ function App() {
               </div>
             </div>
           </div>
-        </nav>
 
-        <div className="p-3 border-t border-gray-200 dark:border-white/5">
+          {/* Temperature Controls */}
+          <div className="space-y-1.5 px-1">
+            <div className="flex items-center justify-between text-[10px] font-semibold text-gray-400 dark:text-white/30 uppercase tracking-wider px-1">
+              <div className="flex items-center gap-2">
+                <Thermometer size={12} />
+                <span>Creativity</span>
+              </div>
+              <span>{temperature}</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={temperature}
+              onChange={(e) => setTemperature(e.target.value)}
+              className="w-full h-1 bg-gray-300 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-red-600 dark:accent-red-500"
+            />
+          </div>
+
+          {/* Search History */}
+          <div className="relative px-1">
+            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-400 dark:text-white/30">
+              <Search size={13} />
+            </span>
+            <input
+              type="text"
+              placeholder="Search history..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-[#212121]/50 border border-gray-200 dark:border-white/5 rounded-lg text-xs outline-none text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-white/30 focus:border-gray-300 dark:focus:border-white/15 transition-all"
+            />
+          </div>
+        </div>
+
+        {/* Chat History List */}
+        <div className="flex-1 min-h-0 px-3 py-2 flex flex-col space-y-2">
+          <div className="text-[10px] font-semibold text-gray-400 dark:text-white/30 px-1 uppercase tracking-wider">
+            Recent chats
+          </div>
+          <div className="flex-1 overflow-y-auto space-y-0.5 pr-1">
+            {(() => {
+              const filtered = conversations.filter(c =>
+                c.title.toLowerCase().includes(searchTerm.toLowerCase())
+              );
+              if (filtered.length === 0) {
+                return (
+                  <div className="text-center py-4 text-xs text-gray-400 dark:text-white/20">
+                    {searchTerm ? 'No matches' : 'No previous chats'}
+                  </div>
+                );
+              }
+              return filtered.map(conv => {
+                const isActive = currentConversationId === conv.id;
+                const isEditing = editingId === conv.id;
+                return (
+                  <div
+                    key={conv.id}
+                    onClick={() => !isEditing && selectConversation(conv.id)}
+                    className={`group w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg text-xs transition-all cursor-pointer ${
+                      isActive
+                        ? 'bg-gray-200 dark:bg-[#2f2f2f] text-gray-950 dark:text-white font-medium shadow-sm'
+                        : 'text-gray-600 dark:text-white/60 hover:bg-gray-200/50 dark:hover:bg-[#212121]/50 hover:text-gray-900 dark:hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5 flex-1 min-w-0">
+                      <MessageSquare size={13} className="shrink-0" />
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              saveTitle(conv.id)
+                            } else if (e.key === 'Escape') {
+                              cancelEditing()
+                            }
+                          }}
+                          onBlur={() => saveTitle(conv.id)}
+                          autoFocus
+                          className="w-full bg-transparent outline-none border-b border-gray-400 dark:border-white/30 py-0.5 text-gray-900 dark:text-white"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        <span className="truncate flex-1 font-light leading-none py-0.5">{conv.title}</span>
+                      )}
+                    </div>
+
+                    {!isEditing && (
+                      <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditing(conv.id, conv.title);
+                          }}
+                          className="p-1 hover:text-gray-950 dark:hover:text-white rounded transition-colors"
+                          title="Rename chat"
+                        >
+                          <Edit2 size={11} />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteConversation(conv.id, e)}
+                          className="p-1 hover:text-red-500 rounded transition-colors"
+                          title="Delete chat"
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
+          </div>
+        </div>
+
+        <div className="p-3 border-t border-gray-200 dark:border-white/5 space-y-2">
           <button onClick={() => setIsSettingsOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors">
             <Settings size={18} className="text-gray-500 dark:text-white/70" />
             <div className="flex-1 text-left text-sm font-medium text-gray-700 dark:text-white">
               Settings
+            </div>
+          </button>
+          <button onClick={() => { setIsAuthenticated(false); setUser(null); localStorage.removeItem('alias_user'); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors">
+            <User size={18} className="text-gray-500 dark:text-white/70" />
+            <div className="flex-1 text-left text-sm font-medium text-red-500">
+              Sign Out
             </div>
           </button>
         </div>
@@ -289,7 +519,7 @@ function App() {
           )}
           <button className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white/90 hover:bg-gray-100 dark:hover:bg-[#2f2f2f] px-3 py-1.5 rounded-lg transition-colors">
             <span>ALIAS</span>
-            <span className="bg-gray-200 dark:bg-white/10 text-xs px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">Core</span>
+            <span className="bg-gray-200 dark:bg-white/10 text-xs px-1.5 py-0.5 rounded text-gray-500 dark:text-white/50">{user ? user.name : 'Core'}</span>
           </button>
         </header>
 
@@ -361,8 +591,11 @@ function App() {
               {/* Input Bottom Actions */}
               <div className="flex justify-between items-center px-2 pb-1">
                 <div className="flex gap-2">
-                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors">
+                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors" title="Attach File">
                     <Paperclip size={18} />
+                  </button>
+                  <button onClick={() => setIsImageModalOpen(true)} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors" title="Generate AI Image">
+                    <Image size={18} />
                   </button>
                   <input
                     type="file"
@@ -402,6 +635,13 @@ function App() {
           setTheme={setTheme}
           voice={voice}
           setVoice={setVoice}
+          memories={memories}
+          onDeleteMemory={handleDeleteMemory}
+        />
+        <ImageModal
+          isOpen={isImageModalOpen}
+          onClose={() => setIsImageModalOpen(false)}
+          onGenerate={handleImageGenerate}
         />
       </div>
     </div>

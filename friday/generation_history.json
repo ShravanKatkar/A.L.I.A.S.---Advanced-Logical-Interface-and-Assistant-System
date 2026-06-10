@@ -1,0 +1,177 @@
+[
+    {
+        "timestamp": "2026-06-10 16:22:17",
+        "prompt": "bmw car in dark night under a street lamp",
+        "filename": "generated_20260610_162046_663.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": true
+    },
+    {
+        "timestamp": "2026-06-10 15:45:10",
+        "prompt": "bmw car",
+        "filename": "generated_20260610_154338_136.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": false,
+        "error_message": "Pollinations HTTP 402 | AI Horde error: HTTPSConnectionPool(host='aihorde.net', port=443): Read timed out. (read timeout=10)"
+    },
+    {
+        "timestamp": "2026-06-10 15:41:28",
+        "prompt": "car",
+        "filename": "generated_20260610_154107_907.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": false,
+        "error_message": "Pollinations HTTP 402 | AI Horde submission failed (HTTP 403)"
+    },
+    {
+        "timestamp": "2026-06-10 14:32:02",
+        "prompt": "car",
+        "filename": "generated_20260610_143146_123.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": false,
+        "error_message": "Pollinations HTTP 402 | AI Horde submission failed (HTTP 403)"
+    },
+    {
+        "timestamp": "2026-06-10 14:30:09",
+        "prompt": "a red apple",
+        "filename": "generated_20260610_142828_439.jpg",
+        "width": 512,
+        "height": 512,
+        "seed": -1,
+        "model": "flux",
+        "success": true
+    },
+    {
+        "timestamp": "2026-06-10 14:28:13",
+        "prompt": "a red apple",
+        "filename": "generated_20260610_142657_462.jpg",
+        "width": 512,
+        "height": 512,
+        "seed": -1,
+        "model": "flux",
+        "success": false,
+        "error_message": "Pollinations HTTP 402 | AI Horde generation timed out"
+    },
+    {
+        "timestamp": "2026-06-10 14:25:08",
+        "prompt": "generate image of a bmw car",
+        "filename": "generated_20260610_142450_776.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": false,
+        "error_message": "Pollinations HTTP 402 | AI Horde submission failed (HTTP 403)"
+    },
+    {
+        "timestamp": "2026-06-10 14:23:30",
+        "prompt": "bmw car",
+        "filename": "generated_20260610_142316_645.jpg",
+        "width": 768,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-10 14:20:54",
+        "prompt": "a red apple",
+        "filename": "generated_20260610_141941_380.jpg",
+        "width": 512,
+        "height": 512,
+        "seed": -1,
+        "model": "flux",
+        "success": true
+    },
+    {
+        "timestamp": "2026-06-10 14:14:18",
+        "prompt": "a red apple",
+        "filename": "generated_20260610_141406_544.jpg",
+        "width": 512,
+        "height": 512,
+        "seed": -1,
+        "model": "flux",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-10 14:10:53",
+        "prompt": "bmw car using default",
+        "filename": "generated_20260610_141041_521.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "default",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-10 14:09:43",
+        "prompt": "image of a bmw car in the rain in dark with lighting",
+        "filename": "generated_20260610_140931_894.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "flux",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-10 12:41:49",
+        "prompt": "a cute puppy",
+        "filename": "generated_20260610_124135_113.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "default",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-10 12:35:36",
+        "prompt": "a red apple",
+        "filename": "generated_20260610_123524_876.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "default",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-08 17:21:41",
+        "prompt": "cute baby blue robot helper Friday",
+        "filename": "generated_20260608_172130_640.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "default",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-08 17:21:27",
+        "prompt": "cute baby blue robot helper Friday",
+        "filename": "generated_20260608_172122_105.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "default",
+        "success": false
+    },
+    {
+        "timestamp": "2026-06-08 17:18:25",
+        "prompt": "cute baby blue robot helper Friday",
+        "filename": "generated_20260608_171817_508.jpg",
+        "width": 1024,
+        "height": 1024,
+        "seed": -1,
+        "model": "default",
+        "success": false
+    }
+]

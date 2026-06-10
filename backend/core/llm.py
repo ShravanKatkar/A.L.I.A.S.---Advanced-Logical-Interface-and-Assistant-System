@@ -69,9 +69,10 @@ class LLMEngine:
         # Gemini Models
         if hasattr(self, 'api_key_set'):
             models.extend([
-                "gemini-3-flash-preview",
-                "gemini-2.5-flash-preview-09-2025",
-                "gemini-3-pro-preview"
+                "gemini-2.5-flash",
+                "gemini-2.5-pro",
+                "gemini-2.0-flash",
+                "gemini-3.5-flash"
             ])
             
         # OpenAI Models
@@ -80,7 +81,10 @@ class LLMEngine:
             
         # DeepSeek Models
         if self.deepseek_client:
-            models.append("DeepSeek-R1")
+            models.extend([
+                "deepseek-chat",
+                "deepseek-reasoner"
+            ])
 
         # Qubrid Models
         if self.qubrid_key:
@@ -91,7 +95,7 @@ class LLMEngine:
             
         return models
 
-    def generate_response(self, text_input, temperature=0.7, model_name='gemini-2.0-flash-exp'):
+    def generate_response(self, text_input, temperature=0.7, model_name='gemini-2.5-flash'):
         """
         Generates a response from the selected model.
         """
@@ -205,3 +209,59 @@ class LLMEngine:
         except Exception as e:
             print(f"LLM Error: {e}")
             return f"I'm having trouble thinking with {model_name} right now. ({e})"
+
+    def extract_memory_operations(self, user_input: str, assistant_response: str, existing_memories: list) -> list:
+        """
+        Uses Gemini to extract memory operations (add, update, delete) from a conversation turn.
+        """
+        if not hasattr(self, 'api_key_set'):
+            return []
+            
+        memories_str = "\n".join([f"- ID {m['id']}: {m['fact']}" for m in existing_memories])
+        
+        prompt = f"""
+You are the memory manager of ALIAS, a personal AI assistant.
+Your task is to analyze the latest user message and ALIAS's response to determine if any updates are needed for the user's long-term memory.
+
+Existing user memories:
+{memories_str}
+
+Conversation turn:
+User: {user_input}
+ALIAS: {assistant_response}
+
+Instructions:
+1. Identify facts about the user that are likely to remain useful in future conversations (e.g. name, goals, preferences, skills, background, projects, tools, etc.).
+2. You can perform three actions:
+   - "add": Add a new fact if it is not already in the existing memories and is useful.
+   - "update": Update an existing memory (by its ID) if the user is changing or correcting that specific information (e.g. changing their major, moving to a new city).
+   - "delete": Delete an existing memory (by its ID) if the user explicitly asks you to forget/delete that information (e.g. "forget that I use Python" or "delete my favorite programming language").
+3. Do not store temporary or irrelevant details (like "user is looking at VS Code", "user generated an image of a car", or chat niceties).
+4. Output ONLY a valid JSON array of objects representing the memory operations. If no changes are needed, output an empty array: [].
+5. Format details:
+   - For add: {{"action": "add", "fact": "fact text"}}
+   - For update: {{"action": "update", "id": <memory_id>, "fact": "new fact text"}}
+   - For delete: {{"action": "delete", "id": <memory_id>}}
+
+JSON Output:
+"""
+        try:
+            generation_config = genai.types.GenerationConfig(temperature=0.1)
+            model = genai.GenerativeModel("gemini-2.5-flash")
+            response = model.generate_content(prompt, generation_config=generation_config)
+            
+            text = response.text.strip()
+            # Clean JSON markdown wrapping if present
+            if text.startswith("```json"):
+                text = text.split("```json")[1].split("```")[0].strip()
+            elif text.startswith("```"):
+                text = text.split("```")[1].split("```")[0].strip()
+                
+            import json
+            ops = json.loads(text)
+            if isinstance(ops, list):
+                return ops
+        except Exception as e:
+            print(f"[-] Error extracting memory operations: {e}")
+            
+        return []
