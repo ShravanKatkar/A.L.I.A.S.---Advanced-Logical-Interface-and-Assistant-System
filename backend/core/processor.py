@@ -5,7 +5,7 @@ from modules.app_control import AppController
 from modules.file_ops import FileOps
 from modules.window_awareness import WindowAwareness
 from modules.email_ops import EmailOps
-# from core.rag import RAGEngine
+from core.rag import RAGEngine
 import sys
 import os
 import platform
@@ -43,7 +43,7 @@ class CommandProcessor:
         self.file_ops = FileOps()
         self.vision = WindowAwareness()
         self.email_ops = EmailOps()
-        # self.rag = RAGEngine()
+        self.rag = RAGEngine()
         self.system_os = platform.system()
 
     def process(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', user_email='guest@alias.com', conversation_id=None):
@@ -57,6 +57,7 @@ class CommandProcessor:
         # Load user memories & search context
         memory_context = ""
         past_context = ""
+        rag_context = ""
         memories = []
         if conversation_id and user_email:
             try:
@@ -77,8 +78,15 @@ class CommandProcessor:
             except Exception as e:
                 print(f"[-] Error loading memory/past context: {e}")
                 
+        # Load document context from RAG Engine
+        if hasattr(self, 'rag') and self.rag:
+            try:
+                rag_context = self.rag.retrieve_context(raw_text)
+            except Exception as re:
+                print(f"[-] Error retrieving document context: {re}")
+                
         # Call the internal routing and generation logic
-        response = self._process_internal(raw_text, temperature, model, user_name, memory_context, past_context)
+        response = self._process_internal(raw_text, temperature, model, user_name, memory_context, past_context, rag_context)
         
         # Save assistant response and run memory extraction
         if conversation_id and user_email:
@@ -103,7 +111,7 @@ class CommandProcessor:
                 
         return response
 
-    def _process_internal(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', memory_context="", past_context=""):
+    def _process_internal(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', memory_context="", past_context="", rag_context=""):
         """
         Analyzes the text and routes to the appropriate action.
         """
@@ -259,6 +267,8 @@ class CommandProcessor:
             system_instruction += "\n" + memory_context
         if past_context:
             system_instruction += "\n" + past_context
+        if rag_context:
+            system_instruction += "\n- Context from analyzed documents:\n" + rag_context
             
         full_prompt = f"{system_instruction}\n\nUser: {raw_text}{current_context}"
         response = self.llm.generate_response(full_prompt, temperature=temperature, model_name=model)

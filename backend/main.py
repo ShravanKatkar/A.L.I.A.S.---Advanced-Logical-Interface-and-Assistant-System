@@ -71,7 +71,13 @@ async def upload_file(file: UploadFile = File(...)):
         file_path = f"uploads/{file.filename}"
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
-        return {"filename": file.filename, "path": file_path, "status": "success"}
+        
+        # Ingest file into RAG Engine
+        if hasattr(processor, 'rag') and processor.rag:
+            status_msg = processor.rag.ingest_document(file_path)
+            return {"filename": file.filename, "path": file_path, "status": "success", "message": status_msg}
+        else:
+            return {"filename": file.filename, "path": file_path, "status": "success", "message": "File uploaded but RAG engine is not active."}
     except Exception as e:
         return {"error": str(e), "status": "failed"}
 

@@ -17,6 +17,7 @@ Thumbs.db
 # Databases & local uploads
 backend/users.db
 backend/uploads/
+backend/chroma_db/
 
 # IDE settings
 .vscode/
