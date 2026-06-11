@@ -95,9 +95,9 @@ class LLMEngine:
             
         return models
 
-    def generate_response(self, text_input, temperature=0.7, model_name='gemini-2.5-flash'):
+    def generate_response(self, text_input, temperature=0.7, model_name='gemini-2.5-flash', token_callback=None):
         """
-        Generates a response from the selected model.
+        Generates a response from the selected model, supporting streaming when token_callback is provided.
         """
         try:
             # --- ROUTING LOGIC ---
@@ -109,19 +109,33 @@ class LLMEngine:
                 
                 generation_config = genai.types.GenerationConfig(temperature=temperature)
                 model = genai.GenerativeModel(model_name)
-                chat = model.start_chat(history=[])
-                response = chat.send_message(text_input, generation_config=generation_config)
                 
-                # Robust extraction for newer models
-                try:
-                    return response.text
-                except Exception:
-                    # Fallback for "Invalid operation" or empty text
-                    if response.candidates:
-                        parts = response.candidates[0].content.parts
-                        if parts:
-                            return parts[0].text
-                    return "I received an empty response from the model."
+                if token_callback:
+                    response = model.generate_content(text_input, generation_config=generation_config, stream=True)
+                    full_text = ""
+                    for chunk in response:
+                        try:
+                            token = chunk.text
+                            if token:
+                                full_text += token
+                                token_callback(token)
+                        except Exception:
+                            pass
+                    return full_text
+                else:
+                    chat = model.start_chat(history=[])
+                    response = chat.send_message(text_input, generation_config=generation_config)
+                    
+                    # Robust extraction for newer models
+                    try:
+                        return response.text
+                    except Exception:
+                        # Fallback for "Invalid operation" or empty text
+                        if response.candidates:
+                            parts = response.candidates[0].content.parts
+                            if parts:
+                                return parts[0].text
+                        return "I received an empty response from the model."
 
             # D. Qubrid Models (Check this BEFORE generic 'gpt' to avoid catching 'gpt-oss')
             elif "gpt-oss" in model_name.lower() or "qubrid" in model_name.lower():
@@ -153,12 +167,17 @@ class LLMEngine:
                     # Parse response safely
                     try:
                         json_resp = response.json()
+                        text_out = ""
                         if 'choices' in json_resp and len(json_resp['choices']) > 0:
-                            return json_resp['choices'][0]['message']['content']
+                            text_out = json_resp['choices'][0]['message']['content']
                         elif 'content' in json_resp:
-                            return json_resp['content']
+                            text_out = json_resp['content']
                         else:
-                            return f"Unexpected Qubrid format keys: {list(json_resp.keys())}"
+                            text_out = f"Unexpected Qubrid format keys: {list(json_resp.keys())}"
+                        
+                        if token_callback and text_out:
+                            token_callback(text_out)
+                        return text_out
                     except (KeyError, IndexError, json.JSONDecodeError) as e:
                         return f"Error parsing Qubrid response: {e}"
                 else:
@@ -172,36 +191,81 @@ class LLMEngine:
                 # Strip prefix if present (e.g. "groq/llama..." -> "llama...")
                 actual_model = model_name.split('/')[-1] if '/' in model_name else model_name
 
-                completion = self.groq_client.chat.completions.create(
-                    model=actual_model,
-                    messages=[{"role": "user", "content": text_input}],
-                    temperature=temperature
-                )
-                return completion.choices[0].message.content
+                if token_callback:
+                    completion = self.groq_client.chat.completions.create(
+                        model=actual_model,
+                        messages=[{"role": "user", "content": text_input}],
+                        temperature=temperature,
+                        stream=True
+                    )
+                    full_text = ""
+                    for chunk in completion:
+                        if chunk.choices and chunk.choices[0].delta.content:
+                            content = chunk.choices[0].delta.content
+                            full_text += content
+                            token_callback(content)
+                    return full_text
+                else:
+                    completion = self.groq_client.chat.completions.create(
+                        model=actual_model,
+                        messages=[{"role": "user", "content": text_input}],
+                        temperature=temperature
+                    )
+                    return completion.choices[0].message.content
 
             # B. OpenAI Models (GPT)
             elif "gpt" in model_name.lower():
                 if not self.openai_client:
                     return "I am not connected to OpenAI (API Key missing)."
                 
-                completion = self.openai_client.chat.completions.create(
-                    model=model_name,
-                    messages=[{"role": "user", "content": text_input}],
-                    temperature=temperature
-                )
-                return completion.choices[0].message.content
+                if token_callback:
+                    completion = self.openai_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": text_input}],
+                        temperature=temperature,
+                        stream=True
+                    )
+                    full_text = ""
+                    for chunk in completion:
+                        if chunk.choices and chunk.choices[0].delta.content:
+                            content = chunk.choices[0].delta.content
+                            full_text += content
+                            token_callback(content)
+                    return full_text
+                else:
+                    completion = self.openai_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": text_input}],
+                        temperature=temperature
+                    )
+                    return completion.choices[0].message.content
 
             # C. DeepSeek Models
             elif "deepseek" in model_name.lower():
                 if not self.deepseek_client:
                     return "I am not connected to DeepSeek (API Key missing)."
                 
-                completion = self.deepseek_client.chat.completions.create(
-                    model=model_name, # Note: DeepSeek V3 on GitHub might use 'DeepSeek-V3'
-                    messages=[{"role": "user", "content": text_input}],
-                    temperature=temperature
-                )
-                return completion.choices[0].message.content
+                if token_callback:
+                    completion = self.deepseek_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": text_input}],
+                        temperature=temperature,
+                        stream=True
+                    )
+                    full_text = ""
+                    for chunk in completion:
+                        if chunk.choices and chunk.choices[0].delta.content:
+                            content = chunk.choices[0].delta.content
+                            full_text += content
+                            token_callback(content)
+                    return full_text
+                else:
+                    completion = self.deepseek_client.chat.completions.create(
+                        model=model_name,
+                        messages=[{"role": "user", "content": text_input}],
+                        temperature=temperature
+                    )
+                    return completion.choices[0].message.content
 
             else:
                 return f"Model {model_name} is not supported."

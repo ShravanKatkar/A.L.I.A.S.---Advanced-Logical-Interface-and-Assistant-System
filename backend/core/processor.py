@@ -46,7 +46,7 @@ class CommandProcessor:
         self.rag = RAGEngine()
         self.system_os = platform.system()
 
-    def process(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', user_email='guest@alias.com', conversation_id=None):
+    def process(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', user_email='guest@alias.com', conversation_id=None, token_callback=None):
         """
         Main entry point for processing commands and queries.
         Retrieves memory and past conversations context, calls internal routing,
@@ -86,7 +86,7 @@ class CommandProcessor:
                 print(f"[-] Error retrieving document context: {re}")
                 
         # Call the internal routing and generation logic
-        response = self._process_internal(raw_text, temperature, model, user_name, memory_context, past_context, rag_context)
+        response = self._process_internal(raw_text, temperature, model, user_name, memory_context, past_context, rag_context, token_callback)
         
         # Save assistant response and run memory extraction
         if conversation_id and user_email:
@@ -111,7 +111,7 @@ class CommandProcessor:
                 
         return response
 
-    def _process_internal(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', memory_context="", past_context="", rag_context=""):
+    def _process_internal(self, text, temperature=0.7, model='gemini-2.5-flash', user_name='Guest', memory_context="", past_context="", rag_context="", token_callback=None):
         """
         Analyzes the text and routes to the appropriate action.
         """
@@ -271,7 +271,7 @@ class CommandProcessor:
             system_instruction += "\n- Context from analyzed documents:\n" + rag_context
             
         full_prompt = f"{system_instruction}\n\nUser: {raw_text}{current_context}"
-        response = self.llm.generate_response(full_prompt, temperature=temperature, model_name=model)
+        response = self.llm.generate_response(full_prompt, temperature=temperature, model_name=model, token_callback=token_callback)
         return response
 
     def execute_system_command(self, command):

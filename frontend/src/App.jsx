@@ -47,9 +47,39 @@ function App() {
 
   useEffect(() => {
     socket.on('response', (data) => {
-      if (data.type === 'ai_response') {
-        addMessage('ai', data.data)
+      if (data.type === 'error') {
+        addMessage('system', data.data)
       }
+    })
+
+    socket.on('chat_start', (data) => {
+      setMessages(prev => [...prev, { role: 'ai', text: '', isStreaming: true }])
+    })
+
+    socket.on('chat_chunk', (data) => {
+      setMessages(prev => {
+        const updated = [...prev]
+        if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            text: updated[updated.length - 1].text + data.chunk
+          }
+        }
+        return updated
+      })
+    })
+
+    socket.on('chat_end', (data) => {
+      setMessages(prev => {
+        const updated = [...prev]
+        if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
+          updated[updated.length - 1] = {
+            ...updated[updated.length - 1],
+            isStreaming: false
+          }
+        }
+        return updated
+      })
     })
 
     socket.on('status', (data) => {
@@ -111,6 +141,9 @@ function App() {
 
     return () => {
       socket.off('response')
+      socket.off('chat_start')
+      socket.off('chat_chunk')
+      socket.off('chat_end')
       socket.off('status')
       socket.off('recognized_text')
       socket.off('available_models')

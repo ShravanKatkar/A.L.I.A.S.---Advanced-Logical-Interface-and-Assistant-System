@@ -206,9 +206,19 @@ async def process_text(sid, data):
             
         print(f"DEBUG: Processing with Temp: {temperature} (Type: {type(temperature)})")
         
-        # Run blocking processor in a separate thread to keep asyncio loop healthy
+        # Emit stream start event
+        await sio.emit('chat_start', {'conversation_id': conversation_id}, room=sid)
+
+        # Setup thread-safe queue structure
+        queue = asyncio.Queue()
         loop = asyncio.get_running_loop()
-        response_text = await loop.run_in_executor(
+        
+        def token_callback(token):
+            # Thread-safe write to asyncio queue
+            loop.call_soon_threadsafe(queue.put_nowait, token)
+
+        # Run blocking processor in a separate thread to keep asyncio loop healthy
+        task = loop.run_in_executor(
             None, 
             processor.process, 
             user_text, 
@@ -216,16 +226,39 @@ async def process_text(sid, data):
             model_name, 
             user_name,
             user_email,
-            conversation_id
+            conversation_id,
+            token_callback
         )
         
-        # Send back to Frontend
-        print(f"Sending response: {response_text[:50]}...")
-        await sio.emit('response', {'data': response_text, 'type': 'ai_response', 'conversation_id': conversation_id})
+        # Stream tokens as they arrive
+        full_response = ""
+        while not task.done() or not queue.empty():
+            try:
+                token = await asyncio.wait_for(queue.get(), timeout=0.1)
+                full_response += token
+                await sio.emit('chat_chunk', {'chunk': token, 'conversation_id': conversation_id}, room=sid)
+                queue.task_done()
+            except asyncio.TimeoutError:
+                continue
+
+        # Get the final returned text
+        response_text = await task
+        
+        # Fallback if no chunks were generated (e.g. static/bypassed command routing)
+        if not full_response and response_text:
+            full_response = response_text
+            await sio.emit('chat_chunk', {'chunk': response_text, 'conversation_id': conversation_id}, room=sid)
+
+        # Emit stream end event
+        await sio.emit('chat_end', {'conversation_id': conversation_id}, room=sid)
+        
+        # Send full response (mostly backward compatibility/reference)
+        print(f"Sending full response: {full_response[:50]}...")
+        await sio.emit('response', {'data': full_response, 'type': 'ai_response', 'conversation_id': conversation_id})
         
         # Speak the response
-        if response_text:
-             threading.Thread(target=tts.speak, args=(response_text,)).start()
+        if full_response:
+             threading.Thread(target=tts.speak, args=(full_response,)).start()
 
     except Exception as e:
         print(f"CRITICAL ERROR in process_text: {e}")
