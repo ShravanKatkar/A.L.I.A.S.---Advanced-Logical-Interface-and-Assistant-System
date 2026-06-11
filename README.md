@@ -477,7 +477,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 <div align="center">
 
-**Built with ❤️ by [Shravan Katkar](https://github.com/ShravanKatkar)**
+**Built by [Shravan Katkar](https://github.com/ShravanKatkar)**
 
 ⭐ **Star this repo if you find it useful!** ⭐
 
