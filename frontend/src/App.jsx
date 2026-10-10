@@ -2,22 +2,38 @@ import { useState, useEffect, useRef } from 'react'
 import io from 'socket.io-client'
 import {
   Plus, MessageSquare, ChevronDown, Square,
-  Paperclip, Mic, ArrowUp, Menu, X, Settings, Terminal, Thermometer, Cpu, Check, Copy, User, Image, Search, Trash2, Edit2
+  Paperclip, Mic, ArrowUp, Menu, X, Settings, Terminal, Thermometer, Cpu, Check, Copy, User, Image, Search, Trash2, Edit2,
+  Maximize2, Download, ExternalLink, AlertCircle, RefreshCw, Sparkles, Bot
 } from 'lucide-react'
 import Auth from './components/Auth'
+import { signOutFirebase } from './firebase'
 import SettingsModal from './components/SettingsModal'
 import ImageModal from './components/ImageModal'
+import OneeFloatingCompanion from './components/OneeFloatingCompanion'
+import WelcomeGreeting from './components/WelcomeGreeting'
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import remarkGfm from 'remark-gfm'
 import rehypeRaw from 'rehype-raw'
+import { Avatar } from '@bible-strong/avatar-react'
+import alienDef from './assets/alien-avatar-definition.json'
+import grokbotDef from './assets/grokbot-avatar-definition.json'
+import strobiDef from './assets/strobi-avatar-definition.json'
+import oneeDef from './assets/onee-avatar-definition.json'
 
-// Connect to the Python Backend
 // Connect to the Python Backend
 const socket = io('http://127.0.0.1:8000', {
   transports: ['websocket', 'polling']
 })
+
+// Official Bible Strong Avatar Presets
+const AVATAR_PRESETS = {
+  alien: { name: 'Alien (Neon)', def: alienDef, desc: 'Neon Alien Companion (Reel)' },
+  grokbot: { name: 'Grok bot', def: grokbotDef, desc: 'Dark Sphere' },
+  strobi: { name: 'Strobi', def: strobiDef, desc: 'Studio Default (Blue)' },
+  onee: { name: 'Onee', def: oneeDef, desc: 'Cone Avatar' },
+}
 
 function App() {
   const [messages, setMessages] = useState([])
@@ -29,10 +45,222 @@ function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isImageModalOpen, setIsImageModalOpen] = useState(false)
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [newChatKey, setNewChatKey] = useState(1)
   const [theme, setTheme] = useState('system') // 'light', 'dark', 'system'
   const [voice, setVoice] = useState('male') // 'male', 'female'
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => {
+    try {
+      const saved = localStorage.getItem('alias_user')
+      return saved ? JSON.parse(saved) : null
+    } catch {
+      return null
+    }
+  })
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    try {
+      return !!localStorage.getItem('alias_user')
+    } catch {
+      return false
+    }
+  })
+  const userFirstName = (user?.given_name || user?.name || user?.displayName || '').trim().split(' ')[0]
+
+  // Avatar Presets & Emotion State
+  const [avatarPreset, setAvatarPreset] = useState(() => localStorage.getItem('alias_avatar_preset') || 'alien')
+  const activeAvatarDef = AVATAR_PRESETS[avatarPreset]?.def || alienDef
+  const [companionSpeech, setCompanionSpeech] = useState('')
+  const companionSpeechTimeoutRef = useRef(null)
+  const [settingsInitialTab, setSettingsInitialTab] = useState('general')
+
+  // Companion Configuration (Size, Alignment with Text Box, and Visuals)
+  const [companionConfig, setCompanionConfig] = useState(() => {
+    try {
+      const saved = localStorage.getItem('alias_companion_config')
+      if (saved) return JSON.parse(saved)
+    } catch {
+      // ignore
+    }
+    return {
+      enabled: true,
+      size: 78,
+      positionMode: 'docked', // 'docked' (alongside text box) or 'floating' (bottom-right corner)
+      showSpeechBubble: true,
+      enableGlow: true,
+      customExpression: null
+    }
+  })
+
+  const updateCompanionConfig = (updates) => {
+    setCompanionConfig(prev => {
+      const next = { ...prev, ...updates }
+      localStorage.setItem('alias_companion_config', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const handleSelectPreset = (key) => {
+    setAvatarPreset(key)
+    localStorage.setItem('alias_avatar_preset', key)
+    triggerAvatarState('happy', 2500)
+  }
+
+  // Avatar Lifecycle & Emotions
+  const [avatarAnimation, setAvatarAnimation] = useState('idle')
+  const [avatarExpression, setAvatarExpression] = useState('neutral')
+  const [isAvatarStudioOpen, setIsAvatarStudioOpen] = useState(false)
+  const avatarTimeoutRef = useRef(null)
+  const lastActivityRef = useRef(Date.now())
+
+  // Dynamic Expression & Emotion Controller
+  const triggerAvatarMood = (expression = 'neutral', duration = 0, animation = 'idle') => {
+    // If user locked a specific fixed expression in settings, preserve user preference
+    if (companionConfig.customExpression) return
+
+    setAvatarExpression(expression)
+    setAvatarAnimation(animation || 'idle')
+
+    if (avatarTimeoutRef.current) {
+      clearTimeout(avatarTimeoutRef.current)
+      avatarTimeoutRef.current = null
+    }
+
+    if (duration > 0) {
+      avatarTimeoutRef.current = setTimeout(() => {
+        // Return smoothly to Neutral: Calm, composed, and balanced
+        setAvatarExpression('neutral')
+        setAvatarAnimation('idle')
+      }, duration)
+    }
+  }
+
+  // Backward-compatible triggerAvatarState mapped to user's exact specification
+  const triggerAvatarState = (state, duration = 0) => {
+    switch (state) {
+      case 'thinking':
+        // Curious: Inquisitive head tilt (while processing question)
+        triggerAvatarMood('curious-left', duration, 'thinking')
+        break
+      case 'working':
+        // Focused: Deep concentration and attentive eyes
+        triggerAvatarMood('attentive-left', duration, 'working')
+        break
+      case 'listening':
+        triggerAvatarMood('attentive-left', duration, 'listening')
+        break
+      case 'celebrate':
+        // Joyful: Cheerful, smiling, and enthusiastic
+        triggerAvatarMood('joyful-wide', duration || 4500, 'celebrate')
+        break
+      case 'happy':
+        // Joyful
+        triggerAvatarMood('joyful-wide', duration || 4000, 'happy')
+        break
+      case 'confused':
+      case 'error':
+        // Surprised: Wide, alert eyes (when some error occurs)
+        triggerAvatarMood('surprised-left', duration || 4500, 'confused')
+        break
+      case 'playful':
+        // Playful: Lively sideways glance (when hi/hey or output generated)
+        triggerAvatarMood('playful-right', duration || 4000, 'happy')
+        break
+      case 'skeptical':
+        // Skeptical: Analytical raised-eye tilt (inquiries, doubts, warnings)
+        triggerAvatarMood('skeptical-left', duration || 4000, 'thinking')
+        break
+      case 'shy':
+        // Gentle / Shy: Soft downward gaze (politeness, goodnight, apologies)
+        triggerAvatarMood('shy-downward', duration || 4000, 'shy')
+        break
+      case 'sleeping':
+      case 'drowsy':
+      case 'bored':
+        // Sleepy: Chill, resting eyes (when there is no work)
+        triggerAvatarMood('sleepy-squint', duration, 'sleeping')
+        break
+      case 'idle':
+      default:
+        // Neutral: Calm, composed, and balanced (normal chat)
+        triggerAvatarMood('neutral', duration, 'idle')
+        break
+    }
+  }
+
+  // Detect user question intent to set conversational mood immediately
+  const detectInputMood = (rawText) => {
+    if (!rawText) return null
+    const text = rawText.trim().toLowerCase()
+
+    // 1. Playful: Lively sideways glance (when user says hi, hey, greetings)
+    const greetings = ['hi', 'hey', 'hello', 'hola', 'sup', "what's up", 'yo', 'good morning', 'good afternoon', 'good evening', 'howdy']
+    if (greetings.some(g => text === g || text.startsWith(g + ' ') || text.startsWith(g + '!') || text.startsWith(g + ','))) {
+      return { mood: 'playful-right', anim: 'happy', speech: 'Hey there! Ready to assist you.' }
+    }
+
+    // 2. Gentle / Shy: Soft downward gaze (polite goodbyes, apologies, compliments)
+    const shyTriggers = ['bye', 'goodbye', 'good night', 'gn', 'see you', 'take care', 'cya', 'sorry', 'apologize', 'excuse me', 'love you', 'cute', 'adorable', 'sweet']
+    if (shyTriggers.some(t => text.includes(t))) {
+      return { mood: 'shy-downward', anim: 'shy', speech: null }
+    }
+
+    // 3. Joyful: Cheerful, smiling, enthusiastic (praises, compliments, gratitude)
+    const praiseTriggers = ['thank', 'thanks', 'thx', 'great job', 'awesome', 'wonderful', 'perfect', 'amazing', 'well done', 'you are the best', 'superb', 'brilliant', 'good work']
+    if (praiseTriggers.some(p => text.includes(p))) {
+      return { mood: 'joyful-wide', anim: 'celebrate', speech: 'My pleasure! Glad I could help.' }
+    }
+
+    // 4. Skeptical: Analytical raised-eye tilt (doubts, questioning, 'why', 'are you sure')
+    const skepticalTriggers = ['are you sure', 'really?', 'really ?', 'why would', 'can you actually', 'how come', 'prove it', 'is that true', 'doubt', 'are you certain', 'explain yourself']
+    if (skepticalTriggers.some(s => text.includes(s))) {
+      return { mood: 'skeptical-left', anim: 'thinking', speech: 'Let me analyze that critically...' }
+    }
+
+    // 5. Focused: Deep concentration and attentive eyes (image creation requests)
+    if (text.startsWith('generate image') || text.startsWith('/image') || text.includes('draw a') || text.includes('generate a picture')) {
+      return { mood: 'attentive-left', anim: 'working', speech: 'Focusing on your image creation...' }
+    }
+
+    // Default: Curious: Inquisitive head tilt while processing the question
+    return { mood: 'curious-left', anim: 'thinking', speech: 'Let me think...' }
+  }
+
+  // Inactivity & wake-up lifecycle manager (Sleepy when there is no work)
+  useEffect(() => {
+    const handleUserActivity = () => {
+      lastActivityRef.current = Date.now()
+      if (!companionConfig.customExpression && (avatarExpression === 'sleepy-squint' || avatarAnimation === 'sleeping')) {
+        // Wake up gently back to Neutral: Calm, composed, and balanced
+        if (avatarTimeoutRef.current) clearTimeout(avatarTimeoutRef.current)
+        triggerAvatarMood('neutral', 0, 'idle')
+      }
+    }
+
+    window.addEventListener('mousemove', handleUserActivity, { passive: true })
+    window.addEventListener('keydown', handleUserActivity, { passive: true })
+    window.addEventListener('click', handleUserActivity, { passive: true })
+    window.addEventListener('scroll', handleUserActivity, { passive: true })
+
+    const interval = setInterval(() => {
+      if (companionConfig.customExpression) return
+      const elapsed = Date.now() - lastActivityRef.current
+      if (['listening', 'thinking', 'working'].includes(avatarAnimation)) {
+        return
+      }
+      if (elapsed > 25000) {
+        // Sleepy: Chill resting eyes when there is no work
+        setAvatarExpression('sleepy-squint')
+        setAvatarAnimation('sleeping')
+      }
+    }, 5000)
+
+    return () => {
+      window.removeEventListener('mousemove', handleUserActivity)
+      window.removeEventListener('keydown', handleUserActivity)
+      window.removeEventListener('click', handleUserActivity)
+      window.removeEventListener('scroll', handleUserActivity)
+      clearInterval(interval)
+    }
+  }, [companionConfig.customExpression, avatarExpression, avatarAnimation])
 
   // Chat History & Memories State
   const [conversations, setConversations] = useState([])
@@ -49,14 +277,36 @@ function App() {
     socket.on('response', (data) => {
       if (data.type === 'error') {
         addMessage('system', data.data)
+        triggerAvatarState('confused', 4000)
+        setCompanionSpeech(data.data || 'Something went wrong.')
+      }
+    })
+
+    socket.on('avatar_state', (data) => {
+      if (data?.state) {
+        if (['celebrate', 'happy', 'laughing', 'confused', 'playful', 'surprised', 'excited'].includes(data.state)) {
+          triggerAvatarState(data.state, 4000)
+        } else {
+          triggerAvatarState(data.state)
+        }
+      }
+      if (data?.text) {
+        setCompanionSpeech(data.text)
       }
     })
 
     socket.on('chat_start', (data) => {
+      triggerAvatarState('thinking')
+      setCompanionSpeech('Let me think...')
       setMessages(prev => [...prev, { role: 'ai', text: '', isStreaming: true }])
     })
 
     socket.on('chat_chunk', (data) => {
+      triggerAvatarState('working')
+      setCompanionSpeech(prev => {
+        if (!prev || prev === 'Let me think...') return data.chunk
+        return prev + data.chunk
+      })
       setMessages(prev => {
         const updated = [...prev]
         if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
@@ -70,9 +320,27 @@ function App() {
     })
 
     socket.on('chat_end', (data) => {
+      if (companionSpeechTimeoutRef.current) clearTimeout(companionSpeechTimeoutRef.current)
+      companionSpeechTimeoutRef.current = setTimeout(() => {
+        setCompanionSpeech('')
+      }, 7000)
       setMessages(prev => {
         const updated = [...prev]
         if (updated.length > 0 && updated[updated.length - 1].role === 'ai') {
+          const finalMsg = updated[updated.length - 1].text.toLowerCase()
+          if (finalMsg.includes('error') || finalMsg.includes('failed') || finalMsg.includes('exception')) {
+            // Surprised: Wide alert eyes when some error occurs
+            triggerAvatarMood('surprised-left', 5000, 'confused')
+          } else if (finalMsg.includes('document') || finalMsg.includes('pdf') || finalMsg.includes('word') || finalMsg.includes('generated image') || finalMsg.includes('launched') || finalMsg.includes('created')) {
+            // Joyful: Cheerful smiling on creation / accomplishments
+            triggerAvatarMood('joyful-wide', 4500, 'celebrate')
+          } else if (finalMsg.includes('sorry') || finalMsg.includes('apologize')) {
+            // Gentle / Shy: Soft downward gaze on apology
+            triggerAvatarMood('shy-downward', 4500, 'shy')
+          } else {
+            // Playful: Lively sideways glance when output is generated!
+            triggerAvatarMood('playful-right', 4500, 'happy')
+          }
           updated[updated.length - 1] = {
             ...updated[updated.length - 1],
             isStreaming: false
@@ -83,7 +351,15 @@ function App() {
     })
 
     socket.on('status', (data) => {
-      setIsListening(data.status === 'listening')
+      const listening = data.status === 'listening'
+      setIsListening(listening)
+      if (listening) {
+        triggerAvatarState('listening')
+        setCompanionSpeech("I'm listening...")
+      } else {
+        triggerAvatarState('idle')
+        setCompanionSpeech('')
+      }
     })
 
     socket.on('recognized_text', (data) => {
@@ -126,6 +402,7 @@ function App() {
       setCurrentConversationId(prev => {
         if (prev === data.conversation_id) {
           setMessages([])
+          setNewChatKey(k => k + 1)
           return null
         }
         return prev
@@ -141,6 +418,7 @@ function App() {
 
     return () => {
       socket.off('response')
+      socket.off('avatar_state')
       socket.off('chat_start')
       socket.off('chat_chunk')
       socket.off('chat_end')
@@ -177,6 +455,7 @@ function App() {
     const file = e.target.files[0]
     if (!file) return
 
+    triggerAvatarState('working')
     const formData = new FormData()
     formData.append('file', file)
 
@@ -188,13 +467,16 @@ function App() {
       const data = await response.json()
       if (data.status === 'success') {
         addMessage('system', `File uploaded: ${file.name}`)
+        triggerAvatarState('celebrate', 3500)
         console.log("Upload success:", data)
       } else {
         addMessage('system', `Upload failed: ${data.error}`)
+        triggerAvatarState('confused', 3500)
       }
     } catch (error) {
       console.error('Upload Error:', error)
       addMessage('system', 'Upload failed (Network Error)')
+      triggerAvatarState('confused', 3500)
     }
   }
 
@@ -232,9 +514,23 @@ function App() {
 
   const sendMessage = () => {
     if (!input.trim()) return
-    addMessage('user', input)
+    const textToSend = input
+    addMessage('user', textToSend)
+
+    const detected = detectInputMood(textToSend)
+    if (detected) {
+      triggerAvatarMood(detected.mood, 0, detected.anim)
+      if (detected.speech) {
+        setCompanionSpeech(detected.speech)
+      }
+    } else {
+      // Curious: Inquisitive head tilt while processing the question
+      triggerAvatarMood('curious-left', 0, 'thinking')
+      setCompanionSpeech('Let me think...')
+    }
+
     socket.emit('process_text', {
-      text: input,
+      text: textToSend,
       temperature: parseFloat(temperature),
       model: selectedModel,
       username: user ? user.name : 'Guest',
@@ -244,23 +540,38 @@ function App() {
     setInput('')
   }
 
-  const handleImageGenerate = ({ prompt, width, height, model }) => {
-    const commandText = `generate image of ${prompt} ${width}x${height} using ${model}`
-    addMessage('user', `Generate image: "${prompt}" (${width}x${height}, model: ${model})`)
-    socket.emit('process_text', {
-      text: commandText,
-      temperature: parseFloat(temperature),
-      model: selectedModel,
-      username: user ? user.name : 'Guest',
-      email: user ? user.email : 'guest@alias.com',
-      conversation_id: currentConversationId
-    })
+  const handleImageGenerate = (result) => {
+    // Add user message showing what was requested
+    addMessage('user', `Generate image: "${result.prompt || result.original_prompt}"`)
+
+    if (result.status === 'success' && result.image_url) {
+      // Playful / Joyful lively output generated
+      triggerAvatarMood('playful-right', 5000, 'celebrate')
+      // Build a rich AI response with the generated image
+      const parts = [
+        `Here's your generated image:\n`,
+        `![Generated Image](${result.image_url})\n`,
+        `**Model:** ${result.model} · **Size:** ${result.width}×${result.height} · **Provider:** ${result.provider}`,
+      ]
+      if (result.enhanced_prompt && result.enhanced_prompt !== result.original_prompt) {
+        parts.push(`\n\n*Enhanced prompt: "${result.enhanced_prompt.substring(0, 150)}${result.enhanced_prompt.length > 150 ? '...' : ''}"*`)
+      }
+      if (result.generation_time) {
+        parts.push(`\n*Generated in ${result.generation_time}s*`)
+      }
+      addMessage('ai', parts.join('\n'))
+    } else {
+      // Surprised: Wide alert eyes when some error occurs
+      triggerAvatarMood('surprised-left', 5000, 'confused')
+      addMessage('ai', `Sorry, image generation failed: ${result.error_message || 'Unknown error. Please try again.'}`)
+    }
   }
 
   const startNewChat = () => {
     setMessages([])
     setInput('')
     setCurrentConversationId(null)
+    setNewChatKey(prev => prev + 1)
   }
 
   const selectConversation = (id) => {
@@ -346,6 +657,153 @@ function App() {
       <code className={`${className} bg-black/10 dark:bg-white/10 px-1 py-0.5 rounded font-mono text-[0.9em]`} {...props}>
         {children}
       </code>
+    )
+  }
+
+  // Custom Markdown Image Renderer with loading, fallback, lightbox and actions
+  const MarkdownImage = ({ src, alt, ...props }) => {
+    const [status, setStatus] = useState('loading') // 'loading' | 'loaded' | 'error'
+    const [currentSrc, setCurrentSrc] = useState(src)
+    const [retryCount, setRetryCount] = useState(0)
+    const [isZoomed, setIsZoomed] = useState(false)
+
+    // Normalize image src
+    useEffect(() => {
+      if (!src) return
+      let normalized = src
+      if (normalized.startsWith('/images/')) {
+        normalized = `http://127.0.0.1:8000${normalized}`
+      }
+      setCurrentSrc(normalized)
+      setStatus('loading')
+    }, [src, retryCount])
+
+    const handleError = () => {
+      // If 127.0.0.1 failed, try localhost as backup
+      if (currentSrc.includes('127.0.0.1:8000')) {
+        setCurrentSrc(currentSrc.replace('127.0.0.1:8000', 'localhost:8000'))
+      } else if (currentSrc.includes('localhost:8000')) {
+        setCurrentSrc(currentSrc.replace('http://localhost:8000', ''))
+      } else {
+        setStatus('error')
+      }
+    }
+
+    const handleDownload = async (e) => {
+      e.stopPropagation()
+      try {
+        const response = await fetch(currentSrc)
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = currentSrc.split('/').pop() || 'alias-generated-image.jpg'
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+      } catch (err) {
+        window.open(currentSrc, '_blank')
+      }
+    }
+
+    return (
+      <div className="my-4 group relative inline-block max-w-full not-prose">
+        <div className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 shadow-lg bg-black/5 dark:bg-black/30 backdrop-blur-sm">
+          {status === 'loading' && (
+            <div className="w-full min-w-[280px] h-64 flex flex-col items-center justify-center bg-gray-100 dark:bg-[#1a1a1a] animate-pulse">
+              <RefreshCw className="animate-spin text-gray-400 mb-2" size={24} />
+              <span className="text-xs text-gray-500">Loading generated image...</span>
+            </div>
+          )}
+
+          {status === 'error' ? (
+            <div className="p-6 flex flex-col items-center justify-center text-center bg-red-500/5 dark:bg-red-500/10 border border-red-500/20 rounded-2xl min-w-[280px]">
+              <AlertCircle className="text-red-400 mb-2" size={28} />
+              <p className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-1">Unable to load image</p>
+              <p className="text-xs text-gray-500 mb-3 truncate max-w-xs">{alt || currentSrc.split('/').pop()}</p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setRetryCount(c => c + 1)}
+                  className="px-3 py-1.5 text-xs bg-gray-200 dark:bg-white/10 hover:bg-gray-300 dark:hover:bg-white/20 rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <RefreshCw size={12} /> Retry
+                </button>
+                <a
+                  href={currentSrc}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center gap-1.5"
+                >
+                  <ExternalLink size={12} /> Open Direct
+                </a>
+              </div>
+            </div>
+          ) : (
+            <img
+              src={currentSrc}
+              alt={alt || "Generated Image"}
+              onLoad={() => setStatus('loaded')}
+              onError={handleError}
+              onClick={() => setIsZoomed(true)}
+              className={`max-w-full max-h-[500px] object-contain rounded-2xl cursor-zoom-in transition-all duration-300 ${status === 'loading' ? 'hidden' : 'block hover:scale-[1.01]'}`}
+              {...props}
+            />
+          )}
+
+          {status === 'loaded' && (
+            <div className="absolute top-3 right-3 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md rounded-xl p-1 shadow-md">
+              <button
+                onClick={() => setIsZoomed(true)}
+                title="Expand"
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <Maximize2 size={14} />
+              </button>
+              <button
+                onClick={handleDownload}
+                title="Download"
+                className="p-1.5 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-colors"
+              >
+                <Download size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Lightbox / Zoom Modal */}
+        {isZoomed && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-md p-4 animate-in fade-in"
+            onClick={() => setIsZoomed(false)}
+          >
+            <div className="relative max-w-5xl max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+              <div className="absolute top-2 right-2 flex items-center gap-2 z-10">
+                <button
+                  onClick={handleDownload}
+                  className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+                  title="Download"
+                >
+                  <Download size={18} />
+                </button>
+                <button
+                  onClick={() => setIsZoomed(false)}
+                  className="p-2 bg-black/60 hover:bg-black/80 text-white rounded-full transition-colors"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+              <img
+                src={currentSrc}
+                alt={alt || "Zoomed Image"}
+                className="max-w-full max-h-[85vh] rounded-xl object-contain shadow-2xl"
+              />
+              <p className="mt-3 text-sm text-white/70">{alt || "Generated Image"}</p>
+            </div>
+          </div>
+        )}
+      </div>
     )
   }
 
@@ -525,13 +983,38 @@ function App() {
         </div>
 
         <div className="p-3 border-t border-gray-200 dark:border-white/5 space-y-2">
-          <button onClick={() => setIsSettingsOpen(true)} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors">
+          {user && (
+            <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 mb-1">
+              {user.picture ? (
+                <img src={user.picture} alt={user.name || 'User'} className="w-8 h-8 rounded-full object-cover ring-1 ring-white/20" />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-semibold text-xs border border-blue-500/30">
+                  {user.name ? user.name[0].toUpperCase() : 'U'}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="text-xs font-semibold text-gray-800 dark:text-white truncate flex items-center gap-1.5">
+                  <span className="truncate">{user.name || 'User'}</span>
+                  {user.provider === 'google' && (
+                    <span className="text-[10px] px-1.5 py-0.2 bg-blue-500/20 text-blue-400 rounded-full font-normal">Google</span>
+                  )}
+                </div>
+                <div className="text-[11px] text-gray-500 dark:text-white/40 truncate">{user.email}</div>
+              </div>
+            </div>
+          )}
+          <button onClick={() => setIsSettingsOpen(true)} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors">
             <Settings size={18} className="text-gray-500 dark:text-white/70" />
             <div className="flex-1 text-left text-sm font-medium text-gray-700 dark:text-white">
               Settings
             </div>
           </button>
-          <button onClick={() => { setIsAuthenticated(false); setUser(null); localStorage.removeItem('alias_user'); }} className="w-full flex items-center gap-3 px-3 py-3 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors">
+          <button onClick={() => { 
+            signOutFirebase();
+            setIsAuthenticated(false); 
+            setUser(null); 
+            localStorage.removeItem('alias_user'); 
+          }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-gray-200 dark:hover:bg-[#212121] transition-colors">
             <User size={18} className="text-gray-500 dark:text-white/70" />
             <div className="flex-1 text-left text-sm font-medium text-red-500">
               Sign Out
@@ -543,8 +1026,8 @@ function App() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col bg-white dark:bg-[#212121] relative min-w-0 transition-colors duration-200">
 
-        {/* Top Bar (Mobile/Collapsed) */}
-        <header className="flex items-center p-4 sticky top-0 z-10">
+        {/* Top Bar */}
+        <header className="flex items-center p-4 sticky top-0 z-10 bg-white/60 dark:bg-[#212121]/60 backdrop-blur-md">
           {!isSidebarOpen && (
             <button onClick={() => setIsSidebarOpen(true)} className="p-2 hover:bg-gray-100 dark:hover:bg-[#2f2f2f] rounded-lg mr-4 text-gray-700 dark:text-white">
               <Menu size={20} />
@@ -558,20 +1041,19 @@ function App() {
 
         {/* Chat Area */}
         <main className="flex-1 overflow-y-auto">
-          {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-4">
-              <div className="w-24 h-24 mb-6 rounded-full overflow-hidden shadow-lg dark:shadow-[0_0_30px_rgba(255,255,255,0.1)]">
-                <img src="/logo.png" alt="ALIAS" className="w-full h-full object-cover" />
-              </div>
-
-              <h2 className="text-2xl font-semibold mb-8 text-gray-900 dark:text-white">How can I assist you?</h2>
+          {messages.length === 0 && !currentConversationId ? (
+            <div className="h-full flex flex-col items-center justify-center px-4 pb-20 select-none">
+              <WelcomeGreeting
+                key={newChatKey}
+                name={userFirstName}
+              />
             </div>
           ) : (
             <div className="max-w-3xl mx-auto pt-10 px-4 pb-32 space-y-6">
               {messages.map((msg, idx) => (
                 <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {msg.role === 'ai' && (
-                    <div className="w-8 h-8 rounded-full bg-black dark:bg-white flex items-center justify-center shrink-0 mt-1 overflow-hidden">
+                    <div className="w-8 h-8 rounded-full bg-black dark:bg-white flex items-center justify-center shrink-0 mt-1 overflow-hidden shadow-sm">
                       <img src="/logo.png" alt="AI" className="w-full h-full object-cover" />
                     </div>
                   )}
@@ -582,7 +1064,8 @@ function App() {
                           remarkPlugins={[remarkGfm]}
                           rehypePlugins={[rehypeRaw]}
                           components={{
-                            code: CodeBlock
+                            code: CodeBlock,
+                            img: MarkdownImage
                           }}
                         >
                           {msg.text}
@@ -602,59 +1085,92 @@ function App() {
         {/* Input Area */}
         <div className="w-full px-4 pb-6 pt-2">
           <div className="max-w-3xl mx-auto relative">
-            <div className="bg-gray-50 dark:bg-[#2f2f2f] rounded-[26px] p-2 flex flex-col relative focus-within:ring-1 focus-within:ring-black/10 dark:focus-within:ring-white/20 transition-shadow">
+            <div className="flex items-center gap-3">
+              <div className="flex-1 min-w-0 bg-gray-50 dark:bg-[#2f2f2f] rounded-[26px] p-2 flex flex-col relative focus-within:ring-1 focus-within:ring-black/10 dark:focus-within:ring-white/20 transition-shadow">
 
-              {/* Input Top Actions */}
-              <div className="flex items-end gap-2 px-2">
-                <textarea
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      sendMessage();
-                    }
-                  }}
-                  placeholder="Message ALIAS..."
-                  className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white resize-none max-h-[200px] py-3.5 px-1 min-h-[52px] placeholder:text-gray-400 dark:placeholder:text-white/30"
-                  rows={1}
-                />
-              </div>
-
-              {/* Input Bottom Actions */}
-              <div className="flex justify-between items-center px-2 pb-1">
-                <div className="flex gap-2">
-                  <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors" title="Attach File">
-                    <Paperclip size={18} />
-                  </button>
-                  <button onClick={() => setIsImageModalOpen(true)} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors" title="Generate AI Image">
-                    <Image size={18} />
-                  </button>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    className="hidden"
-                    onChange={handleFileUpload}
+                {/* Input Top Actions */}
+                <div className="flex items-end gap-2 px-2">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onFocus={() => {
+                      if (['idle', 'bored', 'drowsy'].includes(avatarAnimation)) {
+                        triggerAvatarState('listening');
+                      }
+                    }}
+                    onBlur={() => {
+                      if (avatarAnimation === 'listening') {
+                        triggerAvatarState('idle');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                      }
+                    }}
+                    placeholder="Message ALIAS..."
+                    className="flex-1 bg-transparent border-none outline-none text-gray-900 dark:text-white resize-none max-h-[200px] py-3.5 px-1 min-h-[52px] placeholder:text-gray-400 dark:placeholder:text-white/30"
+                    rows={1}
                   />
                 </div>
 
-                <div className="flex gap-2">
-                  <button onClick={toggleVoice} className={`p-2 rounded-full transition-all ${isListening ? 'bg-black dark:bg-white text-white dark:text-black animate-pulse' : 'text-gray-400 dark:text-white/80 hover:bg-black/5 dark:hover:bg-black/20'}`}>
-                    <Mic size={20} />
-                  </button>
-                  <button onClick={stopTTS} className="p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Stop Speaking">
-                    <Square size={20} fill="currentColor" />
-                  </button>
-                  <button
-                    onClick={sendMessage}
-                    disabled={!input.trim()}
-                    className={`p-2 rounded-lg transition-all ${input.trim() ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-200 dark:bg-[#424242] text-gray-400 dark:text-[#2f2f2f] cursor-not-allowed'}`}
-                  >
-                    <ArrowUp size={20} />
-                  </button>
+                {/* Input Bottom Actions */}
+                <div className="flex justify-between items-center px-2 pb-1">
+                  <div className="flex gap-2">
+                    <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors" title="Attach File">
+                      <Paperclip size={18} />
+                    </button>
+                    <button onClick={() => setIsImageModalOpen(true)} className="p-2 text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-colors" title="Generate AI Image">
+                      <Image size={18} />
+                    </button>
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      className="hidden"
+                      onChange={handleFileUpload}
+                    />
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button onClick={toggleVoice} className={`p-2 rounded-full transition-all ${isListening ? 'bg-black dark:bg-white text-white dark:text-black animate-pulse' : 'text-gray-400 dark:text-white/80 hover:bg-black/5 dark:hover:bg-black/20'}`}>
+                      <Mic size={20} />
+                    </button>
+                    <button onClick={stopTTS} className="p-2 rounded-full text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Stop Speaking">
+                      <Square size={20} fill="currentColor" />
+                    </button>
+                    <button
+                      onClick={sendMessage}
+                      disabled={!input.trim()}
+                      className={`p-2 rounded-lg transition-all ${input.trim() ? 'bg-black dark:bg-white text-white dark:text-black' : 'bg-gray-200 dark:bg-[#424242] text-gray-400 dark:text-[#2f2f2f] cursor-not-allowed'}`}
+                    >
+                      <ArrowUp size={20} />
+                    </button>
+                  </div>
                 </div>
               </div>
+
+              {/* Docked Companion Avatar Beside Text Box */}
+              {companionConfig.enabled && (companionConfig.positionMode === 'docked' || !companionConfig.positionMode) && (
+                <div className="shrink-0 flex items-center justify-center">
+                  <OneeFloatingCompanion
+                    definition={activeAvatarDef}
+                    animation={companionConfig.customExpression ? undefined : avatarAnimation}
+                    expression={companionConfig.customExpression || avatarExpression}
+                    isListening={isListening}
+                    speechText={companionSpeech}
+                    size={companionConfig.size || 78}
+                    onToggleVoice={toggleVoice}
+                    onStopTTS={stopTTS}
+                    onTriggerReaction={(anim) => triggerAvatarState(anim, 4000)}
+                    positionMode="docked"
+                    showSpeechBubble={companionConfig.showSpeechBubble}
+                    enableGlow={companionConfig.enableGlow}
+                  />
+                </div>
+              )}
             </div>
+
             <div className="text-center mt-2 text-xs text-gray-400 dark:text-white/40">
               ALIAS can access your system. Use with caution.
             </div>
@@ -670,12 +1186,37 @@ function App() {
           setVoice={setVoice}
           memories={memories}
           onDeleteMemory={handleDeleteMemory}
+          avatarPreset={avatarPreset}
+          onSelectAvatarPreset={handleSelectPreset}
+          avatarPresets={AVATAR_PRESETS}
+          companionSettings={companionConfig}
+          onUpdateCompanionSettings={updateCompanionConfig}
+          initialTab={settingsInitialTab}
         />
         <ImageModal
           isOpen={isImageModalOpen}
           onClose={() => setIsImageModalOpen(false)}
           onGenerate={handleImageGenerate}
+          onGeneratingStart={() => triggerAvatarMood('attentive-left', 0, 'working')}
         />
+
+        {/* Floating Animated Avatar Companion (Bottom-Right Corner Mode) */}
+        {companionConfig.enabled && companionConfig.positionMode === 'floating' && (
+          <OneeFloatingCompanion
+            definition={activeAvatarDef}
+            animation={companionConfig.customExpression ? undefined : avatarAnimation}
+            expression={companionConfig.customExpression || avatarExpression}
+            isListening={isListening}
+            speechText={companionSpeech}
+            size={companionConfig.size || 78}
+            onToggleVoice={toggleVoice}
+            onStopTTS={stopTTS}
+            onTriggerReaction={(anim) => triggerAvatarState(anim, 4000)}
+            positionMode="floating"
+            showSpeechBubble={companionConfig.showSpeechBubble}
+            enableGlow={companionConfig.enableGlow}
+          />
+        )}
       </div>
     </div>
   )

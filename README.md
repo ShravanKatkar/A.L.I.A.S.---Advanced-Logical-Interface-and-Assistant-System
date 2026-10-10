@@ -49,13 +49,34 @@ With **persistent chat history** and an **intelligent long-term memory system**,
 | **Mermaid Diagrams** | Ask for architecture diagrams and ALIAS renders them inline. |
 | **Strict Formatting Mode** | Enforced "no asterisk" policy and dash-only bullet points for cleaner tech output. |
 
-### 🎨 Image Generation
+### 🎭 Avatars & Floating Companion
 | Feature | Description |
 |---|---|
-| **AI Image Generation** | Trigger image generation with natural language: *"Generate an image of a futuristic city."* |
-| **Custom Dimensions** | Specify width and height for generated images via the Image Generation modal. |
-| **Model Selection** | Choose between `flux`, `turbo`, and other AI Horde models. |
-| **Inline Preview** | Generated images are served from the local backend and rendered directly in chat. |
+| **Interactive Avatars** | Multiple character models (Onee, GrokBot, Alien, Strobi) with dynamic moods and animations. |
+| **Speech Reactivity & Lip Sync** | Avatars react to speech synthesis in real time with synchronized mouth expressions. |
+| **Floating Companion Widget** | Draggable, floating desktop companion with interactive clicks, sound effects, and quick actions. |
+| **Avatar Studio** | Customize avatar styles, colors, accessories, voices, and personality traits. |
+
+### 🔐 Authentication & User Profiles
+| Feature | Description |
+|---|---|
+| **Multi-Provider Auth** | Sign in with Google (Firebase Popup / OAuth), Email & Password, or run offline in Guest Mode. |
+| **Flexible Firebase Config** | Configure Firebase credentials dynamically via Settings or `.env` without modifying code. |
+| **Per-User Memory Isolation** | Chat history, extracted memories, and settings are strictly scoped per authenticated user. |
+
+### 🎨 Image Generation Studio
+| Feature | Description |
+|---|---|
+| **Multi-Provider Generation** | Generate images using Pollinations.ai, AI Horde, or local backends. |
+| **Natural Language Prompts** | Trigger image generation via chat: *"Generate an image of a futuristic cyberpunk city."* |
+| **Aspect Ratios & Controls** | Choose from Square (1:1), Landscape (16:9), Portrait (9:16), Story (4:5), or Wide (21:9) with custom dimensions and seeds. |
+| **Image History Gallery** | View, inspect generation metadata, copy prompts, and download previous creations. |
+
+### 📄 Document Operations Suite
+| Feature | Description |
+|---|---|
+| **Document Processing & Export** | Read, manipulate, and generate PDF (`.pdf`) and Word (`.docx`) files. |
+| **Report Generation** | Automated report and document creation powered by ReportLab and python-docx. |
 
 ### 🖥️ Desktop Control
 | Feature | Description |
@@ -74,13 +95,13 @@ With **persistent chat history** and an **intelligent long-term memory system**,
 | **Voice Selection** | Switch between Christopher (Male) and Nova (Female) from Settings. |
 | **Stop Speaking** | Immediately silence ALIAS mid-speech with the Stop button. |
 
-### 🎨 UI & Customization
+### ⚙️ Settings & Dynamic Keys
 | Feature | Description |
 |---|---|
-| **Dark / Light / System Theme** | Full theme switching with Tailwind CSS dark mode. |
-| **Responsive Layout** | Collapsible sidebar for focus mode on smaller screens. |
-| **Glassmorphism Design** | Premium blur effects, smooth animations via Framer Motion. |
-| **Real-time Streaming Feel** | Instant UI updates via Socket.IO WebSocket events. |
+| **In-App API Key Manager** | Enter and update Gemini, OpenAI, Groq, DeepSeek, and Pollinations keys directly from the UI. |
+| **Firebase Credential Setup** | Interactive Firebase configuration validator and manager within Settings. |
+| **Dark / Light / System Theme** | Full theme switching with Tailwind CSS dark mode and glassmorphism styling. |
+| **Real-time WebSocket Sync** | Instant UI updates via Socket.IO WebSocket events. |
 
 ---
 
@@ -415,6 +436,430 @@ npm run electron:build
 
 ---
 
+## 🗄️ Database Schema
+
+All application data is stored in a single SQLite database file located at `backend/users.db`. The schema is initialised in two files:
+
+- [`backend/core/auth.py`](backend/core/auth.py) — creates the `users` table (`init_db()`)
+- [`backend/core/history_memory.py`](backend/core/history_memory.py) — creates the `conversations`, `messages`, and `memories` tables (`init_db_tables()`)
+
+### Table: `users`
+
+> **Source:** `backend/core/auth.py` — `init_db()` → `CREATE TABLE IF NOT EXISTS users`
+
+| Column | Data Type | Key | Nullable | Constraint / Default | Description |
+|---|---|---|---|---|---|
+| `id` | `INTEGER` | PK | NOT NULL | `AUTOINCREMENT` | Auto-incrementing surrogate primary key |
+| `name` | `TEXT` | — | NOT NULL | — | Display name of the user |
+| `email` | `TEXT` | — | NOT NULL | `UNIQUE` | User's email address (must be unique) |
+| `password_hash` | `TEXT` | — | NOT NULL | — | SHA-256 hash of `password + salt` |
+| `salt` | `TEXT` | — | NOT NULL | — | 16-byte hex random salt (via `secrets.token_hex(16)`) |
+
+---
+
+### Table: `conversations`
+
+> **Source:** `backend/core/history_memory.py` — `init_db_tables()` → `CREATE TABLE IF NOT EXISTS conversations`
+
+| Column | Data Type | Key | Nullable | Constraint / Default | Description |
+|---|---|---|---|---|---|
+| `id` | `TEXT` | PK | NOT NULL | UUID v4 string | UUID primary key generated by `uuid.uuid4()` |
+| `user_id` | `INTEGER` | FK → `users.id` | NOT NULL | — | Owner of this conversation |
+| `title` | `TEXT` | — | NOT NULL | `"New Chat"` (set in code) | Conversation title (first 30 chars of first message, or `"New Chat"`) |
+| `created_at` | `TIMESTAMP` | — | YES | `CURRENT_TIMESTAMP` | When the conversation was created |
+| `updated_at` | `TIMESTAMP` | — | YES | `CURRENT_TIMESTAMP` | Last time a message was added; updated on every `add_message()` call |
+
+**FK constraint:** `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`
+
+---
+
+### Table: `messages`
+
+> **Source:** `backend/core/history_memory.py` — `init_db_tables()` → `CREATE TABLE IF NOT EXISTS messages`
+
+| Column | Data Type | Key | Nullable | Constraint / Default | Description |
+|---|---|---|---|---|---|
+| `id` | `INTEGER` | PK | NOT NULL | `AUTOINCREMENT` | Auto-incrementing surrogate primary key |
+| `conversation_id` | `TEXT` | FK → `conversations.id` | NOT NULL | — | The conversation this message belongs to |
+| `role` | `TEXT` | — | NOT NULL | — | Sender role: `'user'` or `'ai'` |
+| `content` | `TEXT` | — | NOT NULL | — | Full text content of the message |
+| `created_at` | `TIMESTAMP` | — | YES | `CURRENT_TIMESTAMP` | When the message was stored |
+
+**FK constraint:** `FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE`
+
+---
+
+### Table: `memories`
+
+> **Source:** `backend/core/history_memory.py` — `init_db_tables()` → `CREATE TABLE IF NOT EXISTS memories`
+
+| Column | Data Type | Key | Nullable | Constraint / Default | Description |
+|---|---|---|---|---|---|
+| `id` | `INTEGER` | PK | NOT NULL | `AUTOINCREMENT` | Auto-incrementing surrogate primary key |
+| `user_id` | `INTEGER` | FK → `users.id` | NOT NULL | — | Owner of this memory fact |
+| `fact` | `TEXT` | — | NOT NULL | — | A plain-text personal fact extracted from conversation |
+| `created_at` | `TIMESTAMP` | — | YES | `CURRENT_TIMESTAMP` | When the fact was first stored |
+| `updated_at` | `TIMESTAMP` | — | YES | `CURRENT_TIMESTAMP` | Last time the fact was updated via `update_memory()` |
+
+**FK constraint:** `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE`
+
+---
+
+### Performance Indexes
+
+| Index Name | Table | Column | Purpose |
+|---|---|---|---|
+| `idx_conversations_user` | `conversations` | `user_id` | Fast lookup of all conversations belonging to a user |
+| `idx_messages_conversation` | `messages` | `conversation_id` | Fast lookup of all messages within a conversation |
+| `idx_memories_user` | `memories` | `user_id` | Fast lookup of all memories belonging to a user |
+
+> **Note:** SQLite foreign-key enforcement is explicitly enabled per-connection with `PRAGMA foreign_keys = ON` in `delete_conversation()`. Other connections rely on application-level validation.
+
+---
+
+### 🔗 Entity Relationships
+
+Every relationship below is directly supported by a `FOREIGN KEY` constraint in the source code.
+
+| Relationship | Parent Entity | Child Entity | Foreign Key in Child | Cardinality | Meaning |
+|---|---|---|---|---|---|
+| USER → CONVERSATION | `users` | `conversations` | `conversations.user_id` | **1 : N** | One user can own many conversations; each conversation belongs to exactly one user. Deleting a user cascades and deletes all their conversations. |
+| USER → MEMORY | `users` | `memories` | `memories.user_id` | **1 : N** | One user can have many memory facts; each fact belongs to exactly one user. Deleting a user cascades and deletes all their memories. |
+| CONVERSATION → MESSAGE | `conversations` | `messages` | `messages.conversation_id` | **1 : N** | One conversation contains many messages; each message belongs to exactly one conversation. Deleting a conversation cascades and deletes all its messages. |
+
+> There are **no N:M relationships** in this schema. No junction/association tables exist.
+
+---
+
+## 📊 Entity Relationship Diagram
+
+### Element-by-Element Source Proof
+
+Every entity, attribute, PK, FK, and relationship in both diagrams below is verified against the exact DDL line in the source code.
+
+| Diagram Element | Type | Proven By | File | Line(s) |
+|---|---|---|---|---|
+| `users` entity | Entity | `CREATE TABLE IF NOT EXISTS users (` | `core/auth.py` | 15 |
+| `users.id` | PK, INTEGER, AUTOINCREMENT | `id INTEGER PRIMARY KEY AUTOINCREMENT,` | `core/auth.py` | 16 |
+| `users.name` | TEXT NOT NULL | `name TEXT NOT NULL,` | `core/auth.py` | 17 |
+| `users.email` | TEXT UNIQUE NOT NULL | `email TEXT UNIQUE NOT NULL,` | `core/auth.py` | 18 |
+| `users.password_hash` | TEXT NOT NULL | `password_hash TEXT NOT NULL,` | `core/auth.py` | 19 |
+| `users.salt` | TEXT NOT NULL | `salt TEXT NOT NULL` | `core/auth.py` | 20 |
+| `conversations` entity | Entity | `CREATE TABLE IF NOT EXISTS conversations (` | `core/history_memory.py` | 15 |
+| `conversations.id` | PK, TEXT | `id TEXT PRIMARY KEY,` | `core/history_memory.py` | 16 |
+| `conversations.user_id` | INTEGER NOT NULL, FK→`users.id` | `user_id INTEGER NOT NULL,` + `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE` | `core/history_memory.py` | 17, 21 |
+| `conversations.title` | TEXT NOT NULL | `title TEXT NOT NULL,` | `core/history_memory.py` | 18 |
+| `conversations.created_at` | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,` | `core/history_memory.py` | 19 |
+| `conversations.updated_at` | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | `updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,` | `core/history_memory.py` | 20 |
+| `messages` entity | Entity | `CREATE TABLE IF NOT EXISTS messages (` | `core/history_memory.py` | 27 |
+| `messages.id` | PK, INTEGER, AUTOINCREMENT | `id INTEGER PRIMARY KEY AUTOINCREMENT,` | `core/history_memory.py` | 28 |
+| `messages.conversation_id` | TEXT NOT NULL, FK→`conversations.id` | `conversation_id TEXT NOT NULL,` + `FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE` | `core/history_memory.py` | 29, 33 |
+| `messages.role` | TEXT NOT NULL | `role TEXT NOT NULL,` | `core/history_memory.py` | 30 |
+| `messages.content` | TEXT NOT NULL | `content TEXT NOT NULL,` | `core/history_memory.py` | 31 |
+| `messages.created_at` | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,` | `core/history_memory.py` | 32 |
+| `memories` entity | Entity | `CREATE TABLE IF NOT EXISTS memories (` | `core/history_memory.py` | 39 |
+| `memories.id` | PK, INTEGER, AUTOINCREMENT | `id INTEGER PRIMARY KEY AUTOINCREMENT,` | `core/history_memory.py` | 40 |
+| `memories.user_id` | INTEGER NOT NULL, FK→`users.id` | `user_id INTEGER NOT NULL,` + `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE` | `core/history_memory.py` | 41, 45 |
+| `memories.fact` | TEXT NOT NULL | `fact TEXT NOT NULL,` | `core/history_memory.py` | 42 |
+| `memories.created_at` | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | `created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,` | `core/history_memory.py` | 43 |
+| `memories.updated_at` | TIMESTAMP DEFAULT CURRENT_TIMESTAMP | `updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,` | `core/history_memory.py` | 44 |
+| `users` → `conversations` (1:N) | Relationship | `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE` | `core/history_memory.py` | 21 |
+| `users` → `memories` (1:N) | Relationship | `FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE` | `core/history_memory.py` | 45 |
+| `conversations` → `messages` (1:N) | Relationship | `FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE` | `core/history_memory.py` | 33 |
+| `idx_conversations_user` index | Index | `CREATE INDEX IF NOT EXISTS idx_conversations_user ON conversations(user_id)` | `core/history_memory.py` | 50 |
+| `idx_messages_conversation` index | Index | `CREATE INDEX IF NOT EXISTS idx_messages_conversation ON messages(conversation_id)` | `core/history_memory.py` | 51 |
+| `idx_memories_user` index | Index | `CREATE INDEX IF NOT EXISTS idx_memories_user ON memories(user_id)` | `core/history_memory.py` | 52 |
+
+> **Audit result:** Every entity, attribute, PK, FK, relationship, and index above has a direct 1-to-1 mapping to a specific line in the source code. Nothing in the diagrams below is assumed or inferred.
+
+---
+
+### Mermaid Crow's-Foot ER Diagram
+
+```mermaid
+erDiagram
+    users {
+        INTEGER id PK
+        TEXT    name
+        TEXT    email
+        TEXT    password_hash
+        TEXT    salt
+    }
+
+    conversations {
+        TEXT      id PK
+        INTEGER   user_id FK
+        TEXT      title
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    messages {
+        INTEGER   id PK
+        TEXT      conversation_id FK
+        TEXT      role
+        TEXT      content
+        TIMESTAMP created_at
+    }
+
+    memories {
+        INTEGER   id PK
+        INTEGER   user_id FK
+        TEXT      fact
+        TIMESTAMP created_at
+        TIMESTAMP updated_at
+    }
+
+    users ||--o{ conversations : "owns  •  ON DELETE CASCADE"
+    users ||--o{ memories      : "has   •  ON DELETE CASCADE"
+    conversations ||--o{ messages : "contains  •  ON DELETE CASCADE"
+```
+
+**Reading the diagram:**
+- `||` = exactly one (the "1" side; mandatory)
+- `o{` = zero or more (the "N" side; optional many)
+- `PK` / `FK` markers inside entities match the DDL column definitions exactly
+- Relationship labels quote the actual `ON DELETE CASCADE` clause from the DDL
+
+**What is NOT in the diagram (deliberately omitted because it is not in the DDL):**
+- No `ON UPDATE` clause — none is defined anywhere in the schema
+- No `CHECK` constraint on `messages.role` — the `'user'`/`'ai'` values are enforced only by application code in `processor.py`, not by the database
+- No `DEFAULT` for `conversations.id` — the UUID is generated by Python (`uuid.uuid4()` in `history_memory.py:72`), not by SQLite
+
+**Cardinality key:**
+- `||` — exactly one (mandatory)
+- `o{` — zero or more (optional many)
+
+---
+
+## 🎓 Chen-Style ER Diagram
+
+This section provides a traditional **Chen-notation ER diagram** suitable for college/academic use, importable into draw.io.
+
+> **Audit note:** The previous version of this diagram was missing the FK attribute ovals `user_id` (on CONVERSATIONS and MEMORIES) and `conversation_id` (on MESSAGES). These columns exist in the DDL at `core/history_memory.py` lines 17, 29, and 41 respectively. They have been added to the diagram below.
+
+### draw.io XML
+
+Copy the XML below and import it into [draw.io](https://app.diagrams.net/) via **File → Import from → Device** (save as `.xml`):
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel>
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    <!-- ═══════════════════════════════════ ENTITIES (Rectangles) ═══════════════════════════════════
+         Source proof:
+           USERS          → auth.py:15
+           CONVERSATIONS  → history_memory.py:15
+           MESSAGES       → history_memory.py:27
+           MEMORIES       → history_memory.py:39
+    -->
+
+    <!-- USERS Entity  (auth.py:15) -->
+    <mxCell id="E1" value="USERS" style="shape=mxgraph.er.entity;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="380" y="340" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- CONVERSATIONS Entity  (history_memory.py:15) -->
+    <mxCell id="E2" value="CONVERSATIONS" style="shape=mxgraph.er.entity;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="720" y="160" width="200" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- MESSAGES Entity  (history_memory.py:27) -->
+    <mxCell id="E3" value="MESSAGES" style="shape=mxgraph.er.entity;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="1100" y="160" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- MEMORIES Entity  (history_memory.py:39) -->
+    <mxCell id="E4" value="MEMORIES" style="shape=mxgraph.er.entity;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+      <mxGeometry x="720" y="520" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════════ RELATIONSHIPS (Diamonds) ════════════════════════════════
+         Source proof:
+           OWNS     → history_memory.py:21  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+           HAS      → history_memory.py:45  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+           CONTAINS → history_memory.py:33  FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+    -->
+
+    <!-- OWNS (users → conversations)  (history_memory.py:21) -->
+    <mxCell id="R1" value="OWNS" style="shape=mxgraph.er.relationship;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="580" y="250" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- HAS (users → memories)  (history_memory.py:45) -->
+    <mxCell id="R2" value="HAS" style="shape=mxgraph.er.relationship;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="580" y="430" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- CONTAINS (conversations → messages)  (history_memory.py:33) -->
+    <mxCell id="R3" value="CONTAINS" style="shape=mxgraph.er.relationship;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="960" y="170" width="120" height="60" as="geometry" />
+    </mxCell>
+
+    <!-- ════════════════════════════════════ ATTRIBUTES (Ovals) ══════════════════════════════════════
+         Every oval maps to a column in the DDL.
+         Underlined ovals = PRIMARY KEY columns.
+         Source lines listed inline.
+    -->
+
+    <!-- ── USERS attributes ── -->
+    <!-- id PK  (auth.py:16) -->
+    <mxCell id="A1" value="&lt;u&gt;id&lt;/u&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="240" y="200" width="90" height="40" as="geometry" />
+    </mxCell>
+    <!-- name NOT NULL  (auth.py:17) -->
+    <mxCell id="A2" value="name" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="340" y="200" width="90" height="40" as="geometry" />
+    </mxCell>
+    <!-- email UNIQUE NOT NULL  (auth.py:18) -->
+    <mxCell id="A3" value="email" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="440" y="200" width="90" height="40" as="geometry" />
+    </mxCell>
+    <!-- password_hash NOT NULL  (auth.py:19) -->
+    <mxCell id="A4" value="password_hash" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="540" y="200" width="110" height="40" as="geometry" />
+    </mxCell>
+    <!-- salt NOT NULL  (auth.py:20) -->
+    <mxCell id="A5" value="salt" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="660" y="200" width="90" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ── CONVERSATIONS attributes ── -->
+    <!-- id PK TEXT  (history_memory.py:16) -->
+    <mxCell id="A6" value="&lt;u&gt;id&lt;/u&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="640" y="60" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- user_id FK NOT NULL  (history_memory.py:17) -->
+    <mxCell id="A6b" value="user_id (FK)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="730" y="60" width="100" height="40" as="geometry" />
+    </mxCell>
+    <!-- title NOT NULL  (history_memory.py:18) -->
+    <mxCell id="A7" value="title" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="840" y="60" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- created_at DEFAULT CURRENT_TIMESTAMP  (history_memory.py:19) -->
+    <mxCell id="A8" value="created_at" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="930" y="60" width="90" height="40" as="geometry" />
+    </mxCell>
+    <!-- updated_at DEFAULT CURRENT_TIMESTAMP  (history_memory.py:20) -->
+    <mxCell id="A9" value="updated_at" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="1030" y="60" width="90" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ── MESSAGES attributes ── -->
+    <!-- id PK AUTOINCREMENT  (history_memory.py:28) -->
+    <mxCell id="A10" value="&lt;u&gt;id&lt;/u&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="1040" y="60" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- conversation_id FK NOT NULL  (history_memory.py:29) -->
+    <mxCell id="A10b" value="conversation_id (FK)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="1130" y="60" width="140" height="40" as="geometry" />
+    </mxCell>
+    <!-- role NOT NULL  (history_memory.py:30) -->
+    <mxCell id="A11" value="role" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="1290" y="100" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- content NOT NULL  (history_memory.py:31) -->
+    <mxCell id="A12" value="content" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="1310" y="170" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- created_at DEFAULT CURRENT_TIMESTAMP  (history_memory.py:32) -->
+    <mxCell id="A13" value="created_at" style="ellipse;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+      <mxGeometry x="1290" y="240" width="90" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ── MEMORIES attributes ── -->
+    <!-- id PK AUTOINCREMENT  (history_memory.py:40) -->
+    <mxCell id="A14" value="&lt;u&gt;id&lt;/u&gt;" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="600" y="640" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- user_id FK NOT NULL  (history_memory.py:41) -->
+    <mxCell id="A14b" value="user_id (FK)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="690" y="640" width="100" height="40" as="geometry" />
+    </mxCell>
+    <!-- fact NOT NULL  (history_memory.py:42) -->
+    <mxCell id="A15" value="fact" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="800" y="640" width="80" height="40" as="geometry" />
+    </mxCell>
+    <!-- created_at DEFAULT CURRENT_TIMESTAMP  (history_memory.py:43) -->
+    <mxCell id="A16" value="created_at" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="890" y="640" width="90" height="40" as="geometry" />
+    </mxCell>
+    <!-- updated_at DEFAULT CURRENT_TIMESTAMP  (history_memory.py:44) -->
+    <mxCell id="A17" value="updated_at" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+      <mxGeometry x="990" y="640" width="90" height="40" as="geometry" />
+    </mxCell>
+
+    <!-- ═══════════════════════════════ EDGES: Attributes → Entities ═══════════════════════════════ -->
+    <!-- USERS -->
+    <mxCell id="X1"  edge="1" source="A1"   target="E1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X2"  edge="1" source="A2"   target="E1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X3"  edge="1" source="A3"   target="E1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X4"  edge="1" source="A4"   target="E1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X5"  edge="1" source="A5"   target="E1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <!-- CONVERSATIONS -->
+    <mxCell id="X6"  edge="1" source="A6"   target="E2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X6b" edge="1" source="A6b"  target="E2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X7"  edge="1" source="A7"   target="E2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X8"  edge="1" source="A8"   target="E2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X9"  edge="1" source="A9"   target="E2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <!-- MESSAGES -->
+    <mxCell id="X10"  edge="1" source="A10"  target="E3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X10b" edge="1" source="A10b" target="E3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X11"  edge="1" source="A11"  target="E3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X12"  edge="1" source="A12"  target="E3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X13"  edge="1" source="A13"  target="E3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <!-- MEMORIES -->
+    <mxCell id="X14"  edge="1" source="A14"  target="E4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X14b" edge="1" source="A14b" target="E4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X15"  edge="1" source="A15"  target="E4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X16"  edge="1" source="A16"  target="E4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="X17"  edge="1" source="A17"  target="E4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+    <!-- ═════════════════════════════ EDGES: Entities ↔ Relationships ══════════════════════════════ -->
+
+    <!-- USERS ─ 1 ─ OWNS ─ N ─ CONVERSATIONS  (history_memory.py:21) -->
+    <mxCell id="L1" value="1" edge="1" source="E1" target="R1" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="L2" value="N" edge="1" source="R1" target="E2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+    <!-- USERS ─ 1 ─ HAS ─ N ─ MEMORIES  (history_memory.py:45) -->
+    <mxCell id="L3" value="1" edge="1" source="E1" target="R2" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="L4" value="N" edge="1" source="R2" target="E4" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+    <!-- CONVERSATIONS ─ 1 ─ CONTAINS ─ N ─ MESSAGES  (history_memory.py:33) -->
+    <mxCell id="L5" value="1" edge="1" source="E2" target="R3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+    <mxCell id="L6" value="N" edge="1" source="R3" target="E3" parent="1"><mxGeometry relative="1" as="geometry" /></mxCell>
+
+  </root>
+</mxGraphModel>
+```
+
+### Chen Diagram Legend
+
+| Symbol | Meaning | Example in this diagram |
+|---|---|---|
+| Rectangle | Entity (database table) | `USERS`, `CONVERSATIONS`, `MESSAGES`, `MEMORIES` |
+| Diamond | Relationship (verb connecting entities) | `OWNS`, `HAS`, `CONTAINS` |
+| Oval (normal) | Non-key attribute (column) | `name`, `title`, `fact`, `role` |
+| **Oval (underlined text)** | Primary Key attribute | `id` in every entity |
+| *Oval (italic text)* | Foreign Key attribute | `user_id (FK)`, `conversation_id (FK)` |
+| `1` on edge | "exactly one" side of the relationship | One USER owns each CONVERSATION |
+| `N` on edge | "many" side of the relationship | One USER has many MEMORIES |
+
+### Relationships Summary (Chen notation)
+
+```
+USERS ────── 1 ── OWNS ── N ── CONVERSATIONS
+  │                                  │
+  │                                  │
+  └────── 1 ── HAS ── N ── MEMORIES  └── 1 ── CONTAINS ── N ── MESSAGES
+```
+
+---
+
 ## 📦 Dependencies
 
 ### Backend (`requirements.txt`)
@@ -429,14 +874,18 @@ npm run electron:build
 | `python-dotenv` | Environment variable loading |
 | `pyautogui` + `pygetwindow` | Desktop control & window awareness |
 | `langchain` + `chromadb` | RAG pipeline (document Q&A) |
+| `pypdf` + `python-docx` + `reportlab` | Document processing, PDF/DOCX manipulation & reporting |
 
 ### Frontend (`package.json`)
 | Package | Purpose |
 |---|---|
 | `react` + `vite` | UI framework & build tool |
 | `electron` | Desktop app shell |
+| `firebase` | Firebase Client SDK (Auth, Google Sign-in) |
+| `three` | 3D rendering & interactive graphics |
+| `@bible-strong/avatar-react` | Character avatar integration |
 | `socket.io-client` | WebSocket client |
-| `framer-motion` | Smooth animations |
+| `framer-motion` | Smooth animations & transitions |
 | `react-markdown` + `rehype-raw` | Markdown rendering |
 | `react-syntax-highlighter` | Code syntax highlighting |
 | `lucide-react` | Icon library |
@@ -446,11 +895,15 @@ npm run electron:build
 
 ## 🗺️ Roadmap
 
+- [x] Multi-user profiles & Firebase / Google authentication
+- [x] Document Operations & Office processing (PDF, DOCX)
+- [x] In-app dynamic API key and credential management
+- [x] Interactive animated avatars & floating companion mode
+- [x] Advanced multi-provider image generation studio
 - [ ] Streaming token-by-token responses
-- [ ] RAG Document Q&A (upload PDFs, DOCX, and query them)
+- [ ] RAG Document vector search & Q&A
 - [ ] Plugin system for custom skills
 - [ ] Cross-platform support (macOS, Linux)
-- [ ] Multiple user profiles
 - [ ] Voice wake word detection ("Hey ALIAS")
 - [ ] Calendar & reminder integration
 - [ ] Web search tool integration

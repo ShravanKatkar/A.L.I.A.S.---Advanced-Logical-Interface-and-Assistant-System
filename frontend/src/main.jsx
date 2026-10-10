@@ -2,6 +2,7 @@ import React from 'react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+import '@bible-strong/avatar-react/styles.css'
 import App from './App.jsx'
 
 class ErrorBoundary extends React.Component {

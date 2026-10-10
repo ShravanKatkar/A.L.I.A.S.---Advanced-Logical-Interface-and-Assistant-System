@@ -14,7 +14,9 @@
     "electron:build": "vite build && electron-builder"
   },
   "dependencies": {
+    "@bible-strong/avatar-react": "^0.1.0",
     "@tailwindcss/postcss": "^4.1.18",
+    "firebase": "^13.0.0",
     "framer-motion": "^12.26.2",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
@@ -23,7 +25,8 @@
     "react-syntax-highlighter": "^16.1.0",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "three": "^0.186.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",

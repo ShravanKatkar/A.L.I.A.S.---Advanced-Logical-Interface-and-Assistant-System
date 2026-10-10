@@ -29,7 +29,7 @@ class TTSEngine:
         communicate = edge_tts.Communicate(text, self.voice, rate=self.rate, volume=self.volume)
         await communicate.save(filename)
 
-    def speak(self, text):
+    def speak(self, text, on_start=None, on_end=None):
         """
         Converts text to speech using Edge TTS (Online, High Quality).
         """
@@ -41,6 +41,11 @@ class TTSEngine:
             
             # Play audio
             if os.path.exists(filename):
+                if on_start:
+                    try:
+                        on_start()
+                    except Exception as e:
+                        print(f"on_start callback error: {e}")
                 pygame.mixer.music.load(filename)
                 pygame.mixer.music.play()
                 while pygame.mixer.music.get_busy():
@@ -54,8 +59,18 @@ class TTSEngine:
                os.remove(filename)
             except:
                pass
+            if on_end:
+                try:
+                    on_end()
+                except Exception as e:
+                    print(f"on_end callback error: {e}")
         except Exception as e:
             print(f"TTS Error: {e}")
+            if on_end:
+                try:
+                    on_end()
+                except:
+                    pass
 
     def stop(self):
         if pygame.mixer.music.get_busy():

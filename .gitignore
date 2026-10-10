@@ -22,3 +22,8 @@ backend/chroma_db/
 # IDE settings
 .vscode/
 backend/.vscode/
+
+# Archives & backups
+*.zip
+*.tar.gz
+

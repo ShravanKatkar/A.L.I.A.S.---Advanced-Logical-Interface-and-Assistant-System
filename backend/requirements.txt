@@ -1,4 +1,5 @@
 fastapi
+pydantic
 uvicorn
 python-socketio
 google-generativeai
@@ -19,3 +20,4 @@ python-docx
 edge-tts
 pygame
 openai
+reportlab
