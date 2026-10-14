@@ -5,12 +5,16 @@
 # A.L.I.A.S.
 ### Advanced Logical Interface and Assistant System
 
-*A powerful, voice-activated AI desktop assistant with persistent memory and multi-model intelligence.*
+*A powerful, voice-activated AI desktop assistant with persistent memory, real-time token streaming, RAG document intelligence, and multi-model capabilities.*
 
 [![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
 [![Electron](https://img.shields.io/badge/Electron-40-47848F?style=for-the-badge&logo=electron&logoColor=white)](https://electronjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![LangChain](https://img.shields.io/badge/LangChain-RAG%20Vector-1C3C3C?style=for-the-badge&logo=langchain&logoColor=white)](https://www.langchain.com)
+[![ChromaDB](https://img.shields.io/badge/ChromaDB-Vector%20Store-FC521F?style=for-the-badge)](https://www.trychroma.com)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-Real--Time-010101?style=for-the-badge&logo=socketdotio&logoColor=white)](https://socket.io)
+[![Firebase](https://img.shields.io/badge/Firebase-Auth%20%26%20OAuth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)](https://firebase.google.com)
 [![SQLite](https://img.shields.io/badge/SQLite-Local%20DB-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=for-the-badge)](LICENSE)
 
@@ -20,134 +24,145 @@
 
 ## 📖 Overview
 
-**ALIAS** is a feature-rich AI desktop assistant that runs natively on Windows as an Electron app. Unlike cloud-only assistants, ALIAS runs a local Python backend that gives it real system access — it can open apps, control media, manage files, read your active window, and even generate AI images.
+**ALIAS** is a feature-rich AI desktop assistant that runs natively on Windows as an Electron application. Unlike cloud-only assistants, ALIAS runs a local Python backend that gives it real system access — it can launch apps, control system media, search and open files, read your active window context, generate publication-quality documents (PDF & Word DOCX), synthesize multi-provider AI artwork, and answer questions grounded in your private documents through local Retrieval-Augmented Generation (RAG).
 
-With **persistent chat history** and an **intelligent long-term memory system**, ALIAS behaves like a true personal AI — it learns who you are across sessions and uses that context to personalize every response. You can chat with it over text or voice, switch between multiple state-of-the-art AI models on the fly, and have it remember important facts about you forever.
+With **persistent chat history**, **sub-millisecond token-by-token streaming**, **speech-reactive animated 3D character avatars**, and an **autonomous long-term memory engine**, ALIAS behaves like a true personal AI — it learns who you are across sessions, adapts its visual emotions, and uses rich personal and document context to personalize every response.
 
 ---
 
 ## ✨ Features
 
-### 🧠 Intelligence & Memory
+### ⚡ Real-Time Streaming & AI Models
 | Feature | Description |
 |---|---|
-| **Persistent Chat History** | Every conversation is saved to a local SQLite database. Sessions survive restarts. |
-| **ChatGPT-style Sidebar** | Browse, open, rename, and delete past chats from a sleek history panel. |
-| **Keyword History Search** | Filter past conversations in real time from the sidebar search bar. |
-| **Long-Term Memory Extraction** | ALIAS automatically extracts personal facts (name, skills, projects, goals) from your conversations using Gemini and stores them. |
-| **Proactive Context Injection** | Before every response, ALIAS loads your memories and relevant past chat excerpts and prepends them to the LLM system prompt. |
-| **Memory Management Dashboard** | View and delete individual memories at any time from the **Memory** tab in Settings. |
-| **Natural Memory Commands** | Tell ALIAS to remember, forget, or update facts in plain English. |
+| **Token-by-Token Streaming** | Instantaneous streaming responses via asynchronous queue pipeline and Socket.IO events (`chat_start`, `chat_chunk`, `chat_end`). |
+| **Multi-Model Intelligence** | Switch on the fly between Gemini (2.5 Flash, 2.5 Pro, 2.0 Flash), GPT-4o, DeepSeek (Chat, Reasoner), Groq Llama 3.3 70B, and Qubrid GPT-OSS 120B. |
+| **Creativity Slider** | Dynamic temperature control (0.0 – 1.0) for deterministic vs. imaginative responses. |
+| **Markdown & Syntax Highlighting** | Rich GFM rendering, VS Code dark theme code highlighting with one-click copy, and inline Mermaid diagram rendering. |
+| **Strict Technical Formatting** | Clean dash-only bullet points, structured tables, and code formatting rules for technical clarity. |
 
-### 🤖 AI & Models
+### 📚 RAG Document Intelligence & Vector Search
 | Feature | Description |
 |---|---|
-| **Multi-Model Support** | Switch between Gemini, GPT-4o, DeepSeek, Groq Llama, and Qubrid GPT-OSS live from the sidebar. |
-| **Creativity Slider** | Real-time temperature control (0.0 – 1.0) for precise vs. creative responses. |
-| **Markdown Rendering** | AI output is rendered with full GFM markdown — tables, code blocks, bold, lists. |
-| **Syntax Highlighting** | Code responses use VS Code dark theme highlighting with one-click copy. |
-| **Mermaid Diagrams** | Ask for architecture diagrams and ALIAS renders them inline. |
-| **Strict Formatting Mode** | Enforced "no asterisk" policy and dash-only bullet points for cleaner tech output. |
+| **Multi-Format Ingestion** | Upload PDF (`.pdf`), Word (`.docx`), and plain text (`.txt`) files through chat or the `/upload` API endpoint. |
+| **ChromaDB Vector Storage** | Persistent local embedding store powered by ChromaDB and LangChain. |
+| **Gemini Neural Embeddings** | State-of-the-art vector embeddings via `models/gemini-embedding-2`. |
+| **Autonomous Context Injection** | ALIAS automatically queries the vector store for semantic context relevant to your query and injects cited document chunks directly into the LLM context. |
 
-### 🎭 Avatars & Floating Companion
+### 🧠 Intelligence & Long-Term Memory
 | Feature | Description |
 |---|---|
-| **Interactive Avatars** | Multiple character models (Onee, GrokBot, Alien, Strobi) with dynamic moods and animations. |
-| **Speech Reactivity & Lip Sync** | Avatars react to speech synthesis in real time with synchronized mouth expressions. |
-| **Floating Companion Widget** | Draggable, floating desktop companion with interactive clicks, sound effects, and quick actions. |
+| **Persistent Chat History** | Every conversation and message is saved to a local SQLite database (`users.db`). Sessions survive app restarts. |
+| **ChatGPT-Style Sidebar** | Browse, switch, rename, and delete past conversations with real-time keyword search. |
+| **Automated Fact Extraction** | Gemini analyzes conversations post-generation to extract personal facts, skills, and goals without user intervention. |
+| **Proactive Context Injection** | Loads personal memories and relevant past conversation snippets and prepends them to the LLM system prompt. |
+| **Memory Dashboard** | View, inspect, and delete individual stored memories anytime from the Settings panel. |
+| **Natural Memory Commands** | Tell ALIAS to remember, update, or forget facts using everyday spoken or typed language. |
+
+### 🎭 Animated Avatars & Floating Companion
+| Feature | Description |
+|---|---|
+| **Interactive 3D Characters** | Choose between 4 animated avatars: **Onee**, **GrokBot**, **Alien**, and **Strobi**. |
+| **Speech Reactivity & Lip Sync** | Avatars react dynamically during Edge-TTS speech synthesis with synchronized mouth expressions. |
+| **Contextual Mood States** | Avatars transition between `idle`, `thinking`, `working`, `happy`, `celebrate`, and `confused` based on task progress. |
+| **Draggable Floating Companion** | Compact, always-on-top desktop companion widget with interactive clicks, sound effects, and quick actions. |
 | **Avatar Studio** | Customize avatar styles, colors, accessories, voices, and personality traits. |
 
-### 🔐 Authentication & User Profiles
+### 📄 Autonomous Document Operations Suite
 | Feature | Description |
 |---|---|
-| **Multi-Provider Auth** | Sign in with Google (Firebase Popup / OAuth), Email & Password, or run offline in Guest Mode. |
-| **Flexible Firebase Config** | Configure Firebase credentials dynamically via Settings or `.env` without modifying code. |
-| **Per-User Memory Isolation** | Chat history, extracted memories, and settings are strictly scoped per authenticated user. |
+| **PDF Report Generation** | Autonomous creation of publication-quality PDF reports with ReportLab, featuring cover banners, styled headings, structured tables, and metadata. |
+| **Word DOCX Generation** | Creation of structured `.docx` files using python-docx with formatted headings, callouts, and tables. |
+| **Natural Language Generation** | Ask *"Create a PDF report on Quantum Computing"* or *"Generate a Word document proposal for project Alpha"* — ALIAS researches the topic, builds the document, saves it to your Desktop, and auto-launches it. |
 
 ### 🎨 Image Generation Studio
 | Feature | Description |
 |---|---|
-| **Multi-Provider Generation** | Generate images using Pollinations.ai, AI Horde, or local backends. |
-| **Natural Language Prompts** | Trigger image generation via chat: *"Generate an image of a futuristic cyberpunk city."* |
-| **Aspect Ratios & Controls** | Choose from Square (1:1), Landscape (16:9), Portrait (9:16), Story (4:5), or Wide (21:9) with custom dimensions and seeds. |
-| **Image History Gallery** | View, inspect generation metadata, copy prompts, and download previous creations. |
+| **Multi-Provider Engine** | Generate images using Pollinations.ai, AI Horde, or local backends. |
+| **Prompt Enhancement** | LLM-assisted prompt expansion produces vivid, high-detail visual compositions. |
+| **Aspect Ratios & Controls** | Choose from Square (1:1), Landscape (16:9), Portrait (9:16), Story (4:5), or Wide (21:9) with custom seeds and quality presets. |
+| **Image Gallery & History** | View, inspect prompt metadata, re-generate, and download creations from the gallery. |
 
-### 📄 Document Operations Suite
+### 🔐 Authentication & Scoped Profiles
 | Feature | Description |
 |---|---|
-| **Document Processing & Export** | Read, manipulate, and generate PDF (`.pdf`) and Word (`.docx`) files. |
-| **Report Generation** | Automated report and document creation powered by ReportLab and python-docx. |
+| **Multi-Provider Authentication** | Sign in with Google (Firebase Popup / OAuth), Email & Password, or run offline in Guest Mode. |
+| **Dynamic Firebase Setup** | Enter Firebase credentials through Settings or `.env` without touching source code. |
+| **Strict Data Isolation** | Chat history, vector documents, and extracted memories are strictly isolated per user profile. |
 
-### 🖥️ Desktop Control
+### 🖥️ Desktop Control & Navigation
 | Feature | Description |
 |---|---|
-| **App Launcher** | Open any application: *"Open Chrome"*, *"Open Calculator"*. |
-| **Media Control** | Play, pause, skip tracks system-wide. |
-| **File Search & Open** | Search for files by name and auto-open them. |
-| **Window Awareness** | ALIAS reads your active window title to provide context-aware answers. |
-| **Email Sending** | Send emails directly via Gmail using a simple voice command. |
+| **Application Launcher** | Open system software: *"Open Chrome"*, *"Open Calculator"*, *"Open Spotify"*. |
+| **Web Navigation & Search** | Ask ALIAS to open websites, search Google, or find videos on YouTube. |
+| **Media Playback Control** | Play, pause, skip, and stop system audio playback. |
+| **File Search & Open** | Find files by name across system drives and launch them immediately. |
+| **Active Window Awareness** | Inspects active window titles to answer context-sensitive queries. |
+| **Gmail SMTP Automation** | Compose and send emails directly via voice or text commands. |
 
-### 🎤 Voice & Speech
+### 🎤 Voice & Speech Synthesis
 | Feature | Description |
 |---|---|
-| **Speech-to-Text** | System microphone STT via Python backend. |
-| **Text-to-Speech** | High-quality Edge TTS neural voices (online). |
-| **Voice Selection** | Switch between Christopher (Male) and Nova (Female) from Settings. |
-| **Stop Speaking** | Immediately silence ALIAS mid-speech with the Stop button. |
-
-### ⚙️ Settings & Dynamic Keys
-| Feature | Description |
-|---|---|
-| **In-App API Key Manager** | Enter and update Gemini, OpenAI, Groq, DeepSeek, and Pollinations keys directly from the UI. |
-| **Firebase Credential Setup** | Interactive Firebase configuration validator and manager within Settings. |
-| **Dark / Light / System Theme** | Full theme switching with Tailwind CSS dark mode and glassmorphism styling. |
-| **Real-time WebSocket Sync** | Instant UI updates via Socket.IO WebSocket events. |
+| **Microphone STT** | System microphone speech recognition via PyAudio and SpeechRecognition. |
+| **Edge-TTS Neural Voices** | Ultra-realistic Microsoft Edge neural voices with zero API cost. |
+| **Voice Persona Selector** | Switch between Christopher (Male) and Nova (Female) in Settings. |
+| **Instant Silence** | Stop speech synthesis immediately with the Stop button. |
 
 ---
 
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         Electron Desktop App                         │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                     React Frontend (Vite)                     │   │
-│  │  ┌─────────────┐  ┌──────────────────┐  ┌────────────────┐  │   │
-│  │  │  Sidebar    │  │   Chat Window     │  │  Settings      │  │   │
-│  │  │  - History  │  │   - Messages      │  │  - Theme       │  │   │
-│  │  │  - Search   │  │   - Markdown      │  │  - Voice       │  │   │
-│  │  │  - Rename   │  │   - Code Blocks   │  │  - Memory      │  │   │
-│  │  │  - Delete   │  │   - Image Preview │  │    Dashboard   │  │   │
-│  │  └─────────────┘  └──────────────────┘  └────────────────┘  │   │
-│  └──────────────────────────┬───────────────────────────────────┘   │
-│                             │ Socket.IO (WebSocket)                   │
-└─────────────────────────────┼───────────────────────────────────────┘
-                              │
-┌─────────────────────────────▼───────────────────────────────────────┐
-│                   Python Backend (FastAPI + Uvicorn)                  │
-│                                                                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────────┐   │
-│  │   main.py    │  │ processor.py │  │       llm.py             │   │
-│  │              │  │              │  │                          │   │
-│  │ Socket.IO    │  │ - Route cmds │  │ - Gemini 2.5 Flash/Pro   │   │
-│  │ Events:      │──│ - Load ctx   │  │ - GPT-4o                 │   │
-│  │ process_text │  │ - Save msgs  │  │ - DeepSeek R1            │   │
-│  │ get_convs    │  │ - Apply mem  │  │ - Groq Llama 3.3         │   │
-│  │ get_conv     │  │ - Image gen  │  │ - Qubrid GPT-OSS 120B    │   │
-│  │ rename/del   │  └──────────────┘  │ - Memory Extraction      │   │
-│  │ get_memories │                    └──────────────────────────┘   │
-│  └──────────────┘                                                     │
-│                                                                       │
-│  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                   history_memory.py (SQLite)                  │   │
-│  │   conversations │ messages │ memories │ users                 │   │
-│  └──────────────────────────────────────────────────────────────┘   │
-│                                                                       │
-│  ┌──────────┐  ┌──────────┐  ┌───────────────┐  ┌──────────────┐   │
-│  │  tts.py  │  │  stt.py  │  │ app_control.py│  │image_gen.py  │   │
-│  │ Edge-TTS │  │ PyAudio  │  │ System Control│  │ AI Horde API │   │
-│  └──────────┘  └──────────┘  └───────────────┘  └──────────────┘   │
-└─────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  Electron Desktop App                                  │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                               React 19 Frontend (Vite)                           │  │
+│  │  ┌──────────────┐  ┌──────────────────┐  ┌────────────────┐  ┌────────────────┐  │  │
+│  │  │   Sidebar    │  │   Chat Window    │  │  Avatar Studio │  │  Image Studio  │  │  │
+│  │  │  - History   │  │  - Stream Chunks │  │  - 3D Models   │  │  - Multi-ratio │  │  │
+│  │  │  - Search    │  │  - Markdown GFM  │  │  - Mood States │  │  - Enhancer    │  │  │
+│  │  │  - Rename    │  │  - Code Blocks   │  │  - Lip Sync    │  │  - Gallery     │  │  │
+│  │  │  - Delete    │  │  - Document Drop │  │  - Companion   │  │  - Download    │  │  │
+│  │  └──────────────┘  └──────────────────┘  └────────────────┘  └────────────────┘  │  │
+│  └────────────────────────────────────────┬─────────────────────────────────────────┘  │
+│                                           │ Socket.IO (WebSocket)                      │
+└───────────────────────────────────────────┼────────────────────────────────────────────┘
+                                            │
+┌───────────────────────────────────────────▼────────────────────────────────────────────┐
+│                        Python Backend (FastAPI + Uvicorn)                              │
+│                                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────────────────────┐  │
+│  │                                     main.py                                      │  │
+│  │  • Socket.IO Events: process_text, change_voice, get_convs, get_memories         │  │
+│  │  • REST Endpoints: /upload (RAG ingestion), /register, /login, /firebase-config  │  │
+│  │  • Real-Time Stream Engine: asyncio.Queue -> chat_start / chat_chunk / chat_end  │  │
+│  └────────────────────────────────────────┬─────────────────────────────────────────┘  │
+│                                           │                                            │
+│  ┌────────────────────────────────────────▼─────────────────────────────────────────┐  │
+│  │                           core/processor.py (Routing)                            │  │
+│  │  1. Image Intent Hook     --> core/image_service.py (Pollinations / AI Horde)    │  │
+│  │  2. Document Intent Hook  --> modules/document_ops.py (ReportLab PDF / DOCX)     │  │
+│  │  3. App / Web Control     --> modules/app_control.py (Apps, Web, Media)          │  │
+│  │  4. Memory Context        --> core/history_memory.py (SQLite memories & chats)   │  │
+│  │  5. RAG Document Context  --> core/rag.py (LangChain + ChromaDB vector search)   │  │
+│  │  6. Multi-Model LLM Run   --> core/llm.py (Gemini, GPT-4o, DeepSeek, Groq, etc.) │  │
+│  │  7. Memory Extraction     --> core/llm.py (Gemini extracts facts post-response)  │  │
+│  └────────────────────────────────────────┬─────────────────────────────────────────┘  │
+│                                           │                                            │
+│  ┌────────────────────────────────────────┴─────────────────────────────────────────┐  │
+│  │                              Data & Storage Layer                                │  │
+│  │  ┌─────────────────────────────────────────┐  ┌───────────────────────────────┐  │  │
+│  │  │     SQLite Database (users.db)          │  │  ChromaDB Vector Store        │  │  │
+│  │  │  • users         • conversations        │  │  • Document chunks & vectors  │  │  │
+│  │  │  • messages      • memories             │  │  • Gemini embedding-2 index   │  │  │
+│  │  └─────────────────────────────────────────┘  └───────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────────────────┘  │
+│                                                                                        │
+│  ┌───────────────────────┐  ┌───────────────────────┐  ┌────────────────────────────┐  │
+│  │     core/tts.py       │  │      core/stt.py      │  │ modules/window_awareness.py│  │
+│  │  Edge-TTS + Pygame    │  │ PyAudio SpeechRecog   │  │ PyGetWindow Active Title   │  │
+│  └───────────────────────┘  └───────────────────────┘  └────────────────────────────┘  │
+└────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -156,50 +171,70 @@ With **persistent chat history** and an **intelligent long-term memory system**,
 
 ```
 Alias2.0/
-├── run_alias.bat              # One-click launcher
-├── README.md
+├── run_alias.bat                  # One-click launcher for Windows
+├── release.sh                     # Automated release, build & tag script
+├── README.md                      # Comprehensive documentation
 ├── .gitignore
 │
 ├── backend/
-│   ├── main.py                # FastAPI app + Socket.IO event handlers
-│   ├── requirements.txt       # Python dependencies
-│   ├── .env                   # API keys (not committed)
-│   ├── .env.example           # Template for .env setup
+│   ├── main.py                    # FastAPI app, Socket.IO streaming handlers, REST routes
+│   ├── requirements.txt           # Python dependencies (FastAPI, LangChain, Chroma, etc.)
+│   ├── .env                       # API keys & configuration (ignored by git)
+│   ├── .env.example               # Full template for environment setup
 │   │
 │   ├── core/
-│   │   ├── auth.py            # User registration, login, password hashing
-│   │   ├── history_memory.py  # SQLite CRUD: conversations, messages, memories
-│   │   ├── llm.py             # LLM routing (Gemini, GPT, DeepSeek, Groq, Qubrid)
-│   │   ├── processor.py       # Command routing, context injection, memory pipeline
-│   │   ├── tts.py             # Edge-TTS neural text-to-speech
-│   │   └── stt.py             # PyAudio speech recognition
+│   │   ├── auth.py                # User registration, authentication, salt + SHA-256
+│   │   ├── history_memory.py      # SQLite CRUD: conversations, messages, memories
+│   │   ├── llm.py                 # Multi-model LLM engine & memory extraction
+│   │   ├── processor.py           # Command routing, context injection, streaming hooks
+│   │   ├── rag.py                 # LangChain + ChromaDB vector search & document ingestion
+│   │   ├── image_service.py       # Multi-provider image orchestrator
+│   │   ├── image_providers.py     # Pollinations.ai & AI Horde provider implementations
+│   │   ├── image_config.py        # Aspect ratios, presets, and model definitions
+│   │   ├── image_models.py        # Pydantic schemas for image requests/results
+│   │   ├── tts.py                 # Edge-TTS neural text-to-speech with avatar callbacks
+│   │   └── stt.py                 # PyAudio microphone speech-to-text
 │   │
 │   └── modules/
-│       ├── app_control.py     # Open apps, control media playback
-│       ├── file_ops.py        # File search and open
-│       ├── window_awareness.py# Read active window title
-│       └── email_ops.py       # Send emails via Gmail SMTP
+│       ├── app_control.py         # Application launching, web search, media control
+│       ├── document_ops.py        # ReportLab PDF & python-docx document generator
+│       ├── file_ops.py            # Local file search and opening
+│       ├── window_awareness.py    # Active window title detection
+│       └── email_ops.py           # Gmail SMTP email delivery
 │
 ├── frontend/
-│   ├── package.json
-│   ├── vite.config.js
+│   ├── package.json               # Frontend dependencies & Electron scripts
+│   ├── vite.config.js             # Vite bundler configuration
+│   │
 │   ├── electron/
-│   │   └── main.js            # Electron shell
+│   │   └── main.js                # Electron main process & desktop window shell
 │   │
 │   └── src/
-│       ├── App.jsx            # Main application: chat, sidebar, history, state
-│       ├── main.jsx           # React entry point
-│       ├── index.css          # Global styles + Tailwind theme
+│       ├── App.jsx                # Main application UI, streaming client, state
+│       ├── firebase.js            # Firebase Auth & Google Sign-In SDK configuration
+│       ├── main.jsx               # React entry point
+│       ├── index.css              # Tailwind styling & dark mode definitions
+│       │
+│       ├── assets/                # Avatar JSON definition models
+│       │   ├── onee-avatar-definition.json
+│       │   ├── grokbot-avatar-definition.json
+│       │   ├── alien-avatar-definition.json
+│       │   └── strobi-avatar-definition.json
 │       │
 │       └── components/
-│           ├── Auth.jsx       # Login & registration forms
-│           ├── SettingsModal.jsx # Theme, voice, memory management
-│           └── ImageModal.jsx # AI image generation controls
+│           ├── Auth.jsx                   # Login, registration & Firebase Google modal
+│           ├── AvatarStudioModal.jsx      # Avatar customization studio & character picker
+│           ├── ImageModal.jsx             # AI image generation studio & gallery
+│           ├── OneeAvatar.jsx             # React 3D avatar wrapper
+│           ├── OneeFloatingCompanion.jsx  # Draggable floating companion desktop widget
+│           ├── SettingsModal.jsx          # Dynamic key manager, theme, voice, memory dashboard
+│           └── WelcomeGreeting.jsx        # First-launch onboarder
 │
 └── friday/
-    ├── image_generator.py     # AI Horde image generation engine
-    ├── main.py                # CLI image generation entry point
-    └── requirements.txt
+    ├── image_generator.py         # Standalone AI Horde generation engine
+    ├── generation_history.json    # Local image generation history registry
+    ├── main.py                    # Standalone image generator CLI
+    └── project/images/            # Saved generated images
 ```
 
 ---
@@ -244,7 +279,7 @@ npm install
 
 ### 4. Configure API Keys
 
-Create a `.env` file inside the `backend/` directory:
+Create a `.env` file inside the `backend/` directory (you can copy `.env.example`):
 
 ```env
 # Required — powers the core AI and memory extraction
@@ -256,13 +291,25 @@ DEEPSEEK_API_KEY=your_deepseek_key
 GROQ_API_KEY=your_groq_key
 QUBRID_API_KEY=your_qubrid_key
 
+# Optional — Image Studio
+POLLINATIONS_API_KEY=your_pollinations_key
+
 # Optional — for email sending
 EMAIL_ADDRESS=your_gmail@gmail.com
 EMAIL_PASSWORD=your_gmail_app_password
+
+# Optional — Google & Firebase Auth
+GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+FIREBASE_API_KEY=your_firebase_api_key
+FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+FIREBASE_PROJECT_ID=your_project
+FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+FIREBASE_APP_ID=your_app_id
 ```
 
-> **Get a free Gemini API key** at [Google AI Studio](https://aistudio.google.com/app/apikey)
-> **Get a free Groq key** at [console.groq.com](https://console.groq.com)
+> **Get a free Gemini API key** at [Google AI Studio](https://aistudio.google.com/app/apikey)  
+> **Get a free Groq key** at [console.groq.com](https://console.groq.com)  
 > **Get a free Qubrid key** at [platform.qubrid.com](https://platform.qubrid.com)
 
 ### 5. Launch ALIAS
@@ -303,6 +350,106 @@ npm run electron:dev
 
 ---
 
+## ⚡ Real-Time Streaming Architecture
+
+ALIAS utilizes an asynchronous, non-blocking queue pipeline to deliver token-by-token streaming directly into the user interface:
+
+```
+FastAPI Event Loop               Worker Thread (Executor)               Electron React Client
+       │                                     │                                    │
+       │─── process_text (user message) ────>│                                    │
+       │                                     │── processor.process() ────────────>│ (avatar: thinking)
+       │                                     │   ├── RAG & Memory Injected        │
+       │                                     │   └── LLM generates token stream   │
+       │<── loop.call_soon_threadsafe() ─────│                                    │
+       │    (put token into asyncio.Queue)   │                                    │
+       │                                                                          │
+       │─── sio.emit('chat_start') ──────────────────────────────────────────────>│ (reset buffer)
+       │─── sio.emit('chat_chunk', {chunk}) ─────────────────────────────────────>│ (append chunk)
+       │─── sio.emit('avatar_state', {state: 'working'}) ────────────────────────>│ (avatar: working)
+       │─── sio.emit('chat_end') ────────────────────────────────────────────────>│ (finalize markdown)
+       │─── sio.emit('avatar_state', {state: 'happy'}) ──────────────────────────>│ (avatar: happy)
+       │─── tts.speak() with sync callbacks ─────────────────────────────────────>│ (lip-sync react)
+```
+
+1. **Non-blocking processing**: The heavy command routing, context retrieval, and generation run in Python's thread pool executor so the asyncio WebSocket event loop is never blocked.
+2. **Sub-millisecond latency**: As tokens arrive from Gemini, GPT, DeepSeek, or Groq, callbacks push tokens safely across threads into an `asyncio.Queue`.
+3. **Live UI rendering**: The frontend accumulates chunks and renders real-time Markdown formatting without waiting for the complete response.
+4. **Emotional state machine**: The avatar character transitions states (`thinking` ➔ `working` ➔ `happy` / `celebrate` / `confused`) based on pipeline milestones.
+
+---
+
+## 📚 RAG Document Intelligence & Vector Search
+
+ALIAS turns your local desktop into a private, offline knowledge base:
+
+```
+[ User uploads PDF / DOCX / TXT via drag-drop or /upload ]
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Document Extraction & Chunking                           │
+│    • PyPDFLoader / Docx2txtLoader / TextLoader              │
+│    • RecursiveCharacterTextSplitter (chunk: 1000, over: 200)│
+└────────────────────────┬────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Vector Embedding & Persistent Storage                    │
+│    • GoogleGenerativeAIEmbeddings (gemini-embedding-2)      │
+│    • ChromaDB local vector store (backend/chroma_db/)       │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+  User asks question ────┤
+                         ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Semantic Similarity Search                               │
+│    • ChromaDB retrieves top-k most relevant text chunks     │
+│    • Context is formatted and injected into LLM prompt      │
+│    • ALIAS answers with factual citations grounded in docs  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+- **Supported Formats**: Portable Document Format (`.pdf`), Microsoft Word (`.docx`), and Plain Text (`.txt`).
+- **Privacy First**: Documents and embeddings remain stored locally on your machine in `backend/chroma_db/`.
+- **Automatic Synthesis**: Ask questions like *"What does section 4 of the uploaded contract say?"* or *"Summarize the quarterly financial figures from my report"* and ALIAS cites directly from the ingested chunks.
+
+---
+
+## 📄 Autonomous Document Operations Suite (PDF & DOCX)
+
+ALIAS features an autonomous document creation engine capable of researching, structuring, and producing complete documents:
+
+### Natural Language Commands
+- *"Create a PDF report on the future of Artificial Intelligence"*
+- *"Generate a Word document project proposal for cloud migration"*
+- *"Write an executive summary PDF on our Q3 sales performance"*
+
+### Key Capabilities
+- **Publication-Quality PDF Generation**: Powered by ReportLab with clean typography, styled headers, metadata banners, styled bullet points, and zebra-striped tables.
+- **Structured Word DOCX Generation**: Formatted using python-docx with native Microsoft Word headings, callouts, and table styles.
+- **Desktop Auto-Delivery**: Generated documents are saved to your Desktop and automatically opened in your default viewer (Acrobat, Word, or browser).
+
+---
+
+## 🎭 Interactive Avatars & Floating Companion
+
+ALIAS features animated character companions with dynamic emotion states:
+
+- **Characters**: Choose between **Onee**, **GrokBot**, **Alien**, and **Strobi**.
+- **Real-Time Lip Sync**: The avatar's mouth synchronizes in real time with Edge-TTS audio playback.
+- **Dynamic Mood System**:
+  - `idle`: Relaxed breathing and ambient animation
+  - `thinking`: When analyzing your query
+  - `working`: Actively streaming code or writing documents
+  - `celebrate`: Upon successfully opening an app or generating a file
+  - `confused`: When encountering an error or API quota limit
+  - `happy`: Standard pleasant conversational mood
+- **Floating Desktop Companion**: Toggle into a lightweight, draggable companion that stays on top of your windows while you work.
+- **Avatar Studio**: Customize accessories, hair, colors, and personality styles.
+
+---
+
 ## 🧠 How Memory Works
 
 ALIAS uses a **3-stage memory pipeline** powered by Gemini:
@@ -317,12 +464,13 @@ User sends message
 │  • Load all stored memories for user     │
 │  • Extract keywords from the message     │
 │  • Search past conversations for matches │
+│  • Retrieve semantic document chunks     │
 │  • Prepend memories + past excerpts to   │
 │    LLM system prompt                     │
 └─────────────────────────────────────────┘
        │
        ▼
-   LLM generates response
+   LLM generates response (Streaming)
        │
        ▼
 ┌─────────────────────────────────────────┐
@@ -380,6 +528,8 @@ Open the **Settings** panel from the bottom of the sidebar:
 |---|---|
 | **General** | Switch between Dark / Light / System theme |
 | **Voice** | Choose between Christopher (Male) or Nova (Female) neural TTS voices |
+| **API Keys** | Enter and update Gemini, OpenAI, DeepSeek, Groq, and Pollinations API keys |
+| **Firebase** | Configure and test Firebase Client credentials (API Key, Auth Domain, Project ID) |
 | **Memory** | View all stored facts about you; hover any fact and click 🗑️ to delete it |
 
 ---
@@ -401,7 +551,33 @@ You:    "Help me write a resume."
 ALIAS:  "[Uses stored memory]
          Sure Shravan! Since you're in your 3rd year of CS,
          here's how to structure your student resume..."
+
+--- Document Creation ---
+
+You:    "Create a PDF report on Quantum Cryptography."
+ALIAS:  "📄 PDF Document Generated Successfully!
+         - Title: Quantum Cryptography
+         - File: Quantum_Cryptography_Report.pdf
+         - Saved To: Desktop"
 ```
+
+---
+
+## 🚢 Release & Packaging Automation
+
+ALIAS includes a complete release automation script (`release.sh`) for producing production-ready builds:
+
+```bash
+# Make executable and run from repository root
+./release.sh
+```
+
+### Automation Workflow
+1. **Verification**: Checks git status, ensuring working tree is clean and tools (`git`, `npm`, `node`) exist.
+2. **Version Bump**: Prompts for the new semantic version (e.g., `2.0.0`) and updates `frontend/package.json`.
+3. **Commit & Tag**: Commits the version bump and generates an annotated Git tag (`vX.Y.Z`).
+4. **Production Build**: Compiles frontend assets and packages the standalone Electron executable via `electron:build`.
+5. **GitHub Push**: Automatically pushes the commit and git tag to GitHub.
 
 ---
 
@@ -435,6 +611,7 @@ npm run electron:build
 ```
 
 ---
+
 
 ## 🗄️ Database Schema
 
@@ -866,30 +1043,33 @@ USERS ────── 1 ── OWNS ── N ── CONVERSATIONS
 | Package | Purpose |
 |---|---|
 | `fastapi` + `uvicorn` | ASGI web server & REST API |
-| `python-socketio` | Real-time WebSocket event system |
-| `google-generativeai` | Gemini LLM API |
+| `python-socketio` | Real-time WebSocket event system & token streaming |
+| `google-generativeai` | Gemini LLM & embedding API |
 | `openai` | OpenAI, Groq, DeepSeek, Qubrid API client |
+| `langchain` + `langchain-community` | Document loaders, splitters & RAG pipelines |
+| `langchain-google-genai` | Gemini neural embeddings & ChatGoogleGenerativeAI |
+| `langchain-chroma` + `chromadb` | Local persistent vector database |
+| `pypdf` + `python-docx` | PDF and DOCX document extraction and manipulation |
+| `reportlab` | Publication-quality PDF document creation |
 | `edge-tts` + `pygame` | Neural text-to-speech playback |
 | `SpeechRecognition` + `pyaudio` | Microphone speech-to-text |
-| `python-dotenv` | Environment variable loading |
-| `pyautogui` + `pygetwindow` | Desktop control & window awareness |
-| `langchain` + `chromadb` | RAG pipeline (document Q&A) |
-| `pypdf` + `python-docx` + `reportlab` | Document processing, PDF/DOCX manipulation & reporting |
+| `pyautogui` + `pygetwindow` | Desktop application automation & window awareness |
+| `python-dotenv` | Environment variable management |
 
 ### Frontend (`package.json`)
 | Package | Purpose |
 |---|---|
-| `react` + `vite` | UI framework & build tool |
-| `electron` | Desktop app shell |
-| `firebase` | Firebase Client SDK (Auth, Google Sign-in) |
-| `three` | 3D rendering & interactive graphics |
-| `@bible-strong/avatar-react` | Character avatar integration |
-| `socket.io-client` | WebSocket client |
-| `framer-motion` | Smooth animations & transitions |
-| `react-markdown` + `rehype-raw` | Markdown rendering |
-| `react-syntax-highlighter` | Code syntax highlighting |
-| `lucide-react` | Icon library |
-| `tailwindcss` | Utility-first CSS framework |
+| `react` + `vite` | React 19 UI framework & build tool |
+| `electron` | Desktop application shell |
+| `firebase` | Firebase Client SDK (Authentication, Google Sign-in) |
+| `@bible-strong/avatar-react` | 3D character avatar rendering & animations |
+| `three` | 3D WebGL graphics and scene rendering |
+| `socket.io-client` | Real-time WebSocket client |
+| `framer-motion` | Smooth fluid animations & modal transitions |
+| `react-markdown` + `rehype-raw` | GitHub Flavored Markdown rendering |
+| `react-syntax-highlighter` | VS Code dark theme code highlighting |
+| `lucide-react` | Modern UI icon library |
+| `tailwindcss` | Utility-first CSS styling & dark mode |
 
 ---
 
@@ -900,8 +1080,9 @@ USERS ────── 1 ── OWNS ── N ── CONVERSATIONS
 - [x] In-app dynamic API key and credential management
 - [x] Interactive animated avatars & floating companion mode
 - [x] Advanced multi-provider image generation studio
-- [ ] Streaming token-by-token responses
-- [ ] RAG Document vector search & Q&A
+- [x] Real-time token-by-token streaming responses
+- [x] RAG Document vector search & Q&A
+- [x] Automated release & build pipeline (`release.sh`)
 - [ ] Plugin system for custom skills
 - [ ] Cross-platform support (macOS, Linux)
 - [ ] Voice wake word detection ("Hey ALIAS")
