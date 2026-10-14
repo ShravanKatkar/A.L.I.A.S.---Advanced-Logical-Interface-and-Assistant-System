@@ -54,18 +54,38 @@ def init_db_tables():
     conn.commit()
     conn.close()
 
-def get_user_id_by_email(email: str) -> int:
-    """Helper to get user ID from email."""
+def get_user_id_by_email(email: str, auto_create_guest: bool = True) -> int:
+    """Helper to get user ID from email, auto-creating a guest/fallback user if missing."""
+    if not email:
+        email = "guest@alias.com"
+
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     cursor.execute("SELECT id FROM users WHERE email = ?", (email,))
     row = cursor.fetchone()
+    if row:
+        user_id = row[0]
+        conn.close()
+        return user_id
+
+    # Auto-provision guest or fallback user so unauthenticated/guest chats never crash
+    if auto_create_guest:
+        name = "Guest" if "guest" in email.lower() else email.split("@")[0].capitalize()
+        cursor.execute(
+            "INSERT INTO users (name, email, password_hash, salt, provider) VALUES (?, ?, ?, ?, ?)",
+            (name, email, "", "", "guest" if "guest" in email.lower() else "auto")
+        )
+        conn.commit()
+        user_id = cursor.lastrowid
+        conn.close()
+        return user_id
+
     conn.close()
-    return row[0] if row else None
+    return None
 
 def create_conversation(user_email: str, title: str = None) -> str:
     """Creates a new conversation for the user and returns its ID."""
-    user_id = get_user_id_by_email(user_email)
+    user_id = get_user_id_by_email(user_email, auto_create_guest=True)
     if not user_id:
         raise ValueError(f"User not found for email: {user_email}")
         

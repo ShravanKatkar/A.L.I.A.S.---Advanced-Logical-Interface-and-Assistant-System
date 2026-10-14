@@ -18,6 +18,9 @@ Thumbs.db
 backend/users.db
 backend/uploads/
 backend/chroma_db/
+chroma_db/
+*.mp3
+*.wav
 
 # IDE settings
 .vscode/

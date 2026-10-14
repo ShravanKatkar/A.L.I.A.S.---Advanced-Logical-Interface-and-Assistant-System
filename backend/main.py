@@ -61,6 +61,9 @@ load_dotenv(dotenv_path=env_path)
 print(f"DEBUG: GEMINI_API_KEY: {bool(os.getenv('GEMINI_API_KEY'))}")
 print(f"DEBUG: QUBRID_API_KEY: {bool(os.getenv('QUBRID_API_KEY'))}")
 
+# Initialize SQLite database & migrations
+auth.init_db()
+
 # AI Components Initialization
 llm = LLMEngine()
 tts = TTSEngine()

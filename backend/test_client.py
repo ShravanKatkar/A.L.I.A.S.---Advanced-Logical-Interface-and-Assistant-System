@@ -3,11 +3,30 @@ import asyncio
 
 sio = socketio.AsyncClient()
 
+received_chunks = []
+
 @sio.event
 async def connect():
     print("Connected to Backend")
-    print("Sending 'hello'...")
-    await sio.emit('process_text', {'text': 'hello', 'model': 'gemini-2.5-flash'})
+    print("Sending test query: 'Say hello in 5 words'...")
+    await sio.emit('process_text', {'text': 'Say hello in 5 words', 'model': 'gemini-2.5-flash'})
+
+@sio.event
+async def chat_start(data):
+    print(f"\n[Stream Started] Conversation ID: {data.get('conversation_id')}")
+
+@sio.event
+async def chat_chunk(data):
+    chunk = data.get('chunk', '')
+    received_chunks.append(chunk)
+    print(chunk, end='', flush=True)
+
+@sio.event
+async def chat_end(data):
+    full_text = "".join(received_chunks)
+    print(f"\n\n[Stream Complete] Full response: {full_text}")
+    print("AI Response Verified Successfully!")
+    await sio.disconnect()
 
 @sio.event
 async def response(data):
@@ -18,7 +37,7 @@ async def response(data):
 
 @sio.event
 async def disconnect():
-    print("Disconnected")
+    print("Disconnected from Backend")
 
 async def main():
     try:
